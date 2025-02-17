@@ -273,11 +273,11 @@ REST_FRAMEWORK = {
 
 # Session Settings
 
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_AGE = 60 * 60 * 24 # 1 day
 SESSION_COOKIE_SAME_SITE = 'Lax'
 SESSION_COOKIE_SECURE = True  # Secure session cookies
-SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_CACHE_ALIAS = 'default'
 
 # CORS Settings

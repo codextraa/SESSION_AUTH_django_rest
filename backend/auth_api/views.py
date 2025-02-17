@@ -13,7 +13,8 @@ from rest_framework.authentication import SessionAuthentication
 from django_filters.rest_framework import DjangoFilterBackend
 from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiParameter
 from django.conf import settings
-from django.contrib.auth import get_user_model, authenticate, login
+from django.contrib.auth import get_user_model, authenticate, login, logout
+from django.contrib.sessions.models import Session
 from django.core.cache import cache
 from django.utils.timezone import now
 from django.middleware.csrf import get_token
@@ -523,7 +524,99 @@ class ResendOtpView(APIView):
         
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class SessionView(APIView):
+    """Token Generation View after OTP verification."""
+    permission_classes = [AllowAny]
+    renderer_classes = [ViewRenderer]
+
+    @extend_schema(
+        summary="Generate JWT tokens",
+        description="Verifies OTP and generates JWT access and refresh tokens for the authenticated user.",
+        request=TokenRequestSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Token response",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "access_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"},
+                        "access": {"type": "string", "example": "JWT access token"},
+                        "refresh": {"type": "string", "example": "JWT refresh token"},
+                        "user_role": {"type": "string", "example": "Admin"},
+                        "user_id": {"type": "integer", "example": 1},
+                    },
+                },
+            ),
+            400: OpenApiResponse(
+                description="Bad Request - Various errors related to OTP verification or session issues",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": [
+                                "Invalid OTP",
+                                "Session expired. Please login again.",
+                                "Invalid credentials",
+                                "This process cannot be used, as user is created using {auth_provider}",
+                                "Email is not verified. You must verify your email first",
+                                "Account is deactivated. Contact your admin",
+                                "Invalid Session"
+                            ],
+                        },
+                    },
+                },
+            ),
+            500: OpenApiResponse(
+                description="Internal Server Error",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {"type": "string", "example": "Internal Server Error"}
+                    },
+                },
+            ),
+        }
+    )
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):
+        """Post a request to TokenView. Verifies OTP and generates JWT tokens."""
+        try:
+            user_id = request.data.pop("user_id", None)
+            otp_from_request = request.data.pop("otp", None)
+            
+            user = check_user_id(user_id)
+            
+            if isinstance(user, Response):
+                return user
+            
+            # Get email and password from the cache
+            email = cache.get(f"email_{user.id}")
+            password = cache.get(f"password_{user.id}")
+
+            if not email or not password:
+                return Response({"error": "Session expired. Please login again."}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Verify OTP
+            otp_verify = EmailOtp.verify_otp(user.id, otp_from_request)
+            
+            if not otp_verify:
+                return Response({"error": "Invalid OTP"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Generate session ID
+            user = authenticate(request, email=email, password=password)
+            
+            login(request, user)
+            
+            session_id = request.session.session_key
+
+            return Response({"session_id": session_id}, status=status.HTTP_200_OK)
         
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+      
 class EmailVerifyView(APIView):
     """Email Verify View."""
     permission_classes = [AllowAny]
@@ -713,6 +806,7 @@ class EmailVerifyView(APIView):
 class PhoneVerifyView(APIView):
     """Phone Verification View."""
     permission_classes = [IsAuthenticated]
+    authentication_classes = [SessionAuthentication]
     renderer_classes = [ViewRenderer]
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = 'phone_otp'
@@ -1953,156 +2047,150 @@ class UserViewSet(ModelViewSet):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# class LogoutView(APIView):
-#     """
-#     Logout by blacklisting the refresh token.
-#     """
-#     permission_classes = [AllowAny]
-#     authentication_classes = []
-#     renderer_classes = [ViewRenderer]
+class LogoutView(APIView):
+    """
+    Logout by blacklisting the refresh token.
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+    renderer_classes = [ViewRenderer]
 
-#     @extend_schema(
-#         summary="Logout",
-#         description="Logout by blacklisting the refresh token.",
-#         request=LogoutSerializer,
-#         responses={
-#             200: OpenApiResponse(
-#                 description="Logout successful",
-#                 response={
-#                     "type": "object",
-#                     "properties": {
-#                         "success": {"type": "string", "example": "Logged out successfully"}
-#                     }
-#                 }
-#             ),
-#             400: OpenApiResponse(
-#                 description="Invalid request",
-#                 response={
-#                     "type": "object",
-#                     "properties": {
-#                         "errors": {
-#                             "type": "array",
-#                             "items": {"type": "string"},
-#                             "example": [
-#                                 "Tokens are required"
-#                             ]
-#                         }
-#                     }
-#                 }
-#             ),
-#             500: OpenApiResponse(
-#                 description="Internal Server Error",
-#                 response={
-#                     "type": "object",
-#                     "properties": {
-#                         "errors": {"type": "string", "example": "Internal Server Error"}
-#                     },
-#                 },
-#             ),
-#         }
-#     )
-#     @method_decorator(csrf_protect)
-#     def post(self, request, *args, **kwargs):
-#         try:
-#             # Extract tokens from the request
-#             refresh_token = request.data.get("refresh")
-
-#             if not refresh_token:
-#                 return Response({"error": "Tokens are required"}, status=status.HTTP_400_BAD_REQUEST)
-
-#             # Blacklist refresh token
-#             token = RefreshToken(refresh_token)
-#             token.blacklist()
-
-#             return Response({"success": "Logged out successfully"}, status=status.HTTP_200_OK)
-        
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-# class SocialAuthView(APIView):
-#     permission_classes = [AllowAny]
-#     renderer_classes = [ViewRenderer]
-
-#     @extend_schema(
-#         summary="Social Login",
-#         description="Login using social media accounts. (Google, Facebook, GitHub)",
-#         request=SocialOAuthSerializer,
-#         responses={
-#             200: OpenApiResponse(
-#                 description="Login successful",
-#                 response={
-#                     "type": "object",
-#                     "properties": {
-#                         "success": {"type": "string", "example": "Logged in successfully"}
-#                     }
-#                 }
-#             ),
-#             400: OpenApiResponse(
-#                 description="Invalid request",
-#                 response={
-#                     "type": "object",
-#                     "properties": {
-#                         "errors": {
-#                             "type": "array",
-#                             "items": {"type": "string"},
-#                             "example": [
-#                                 "Token and provider are required",
-#                                 "Account is deactivated. Contact your admin.",
-#                                 "Authentication failed, user not found",
-#                                 "User with this email already created using password. Please login using password.",
-#                                 "User with this email already created using {auth_provider}. Please login using {auth_provider}."
-#                             ]
-#                         }
-#                     }
-#                 }
-#             ),
-#             500: OpenApiResponse(
-#                 description="Internal Server Error",
-#                 response={
-#                     "type": "object",
-#                     "properties": {
-#                         "errors": {"type": "string", "example": "Internal Server Error"}
-#                     },
-#                 },
-#             ),
-#         }
-#     )
-#     def post(self, request, *args, **kwargs):
-#         token = request.data.get("token")
-#         provider = request.data.get("provider")
-#         if not token or not provider:
-#             return Response({"error": "Token and provider are required"}, status=400)
-
-#         try:
-#             # Load social auth backend dynamically
-#             strategy = load_strategy(request)
-#             backend = load_backend(strategy, provider, redirect_uri=None)
-#             user = backend.do_auth(token)
+    @extend_schema(
+        summary="Logout",
+        description="Logout by blacklisting the refresh token.",
+        request=None,
+        responses={
+            200: OpenApiResponse(
+                description="Logout successful",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "success": {"type": "string", "example": "Logged out successfully"}
+                    }
+                }
+            ),
+            400: OpenApiResponse(
+                description="Invalid request",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": [
+                                "Tokens are required"
+                            ]
+                        }
+                    }
+                }
+            ),
+            500: OpenApiResponse(
+                description="Internal Server Error",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {"type": "string", "example": "Internal Server Error"}
+                    },
+                },
+            ),
+        }
+    )
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):
+        try:
+            # Extract tokens from the request
+            session_key = request.session.session_key
             
-#             if isinstance(user, Response):
-#                 return user
+            logout(request)
             
-#             if user:
-#                 if not user.is_active:
-#                     return Response({"error": "Account is deactivated. Contact your admin."}, status=400)
-#                 # Generate JWT tokens for the authenticated user
-#                 refresh = RefreshToken.for_user(user)
-#                 access_token_expiry = (now() + timedelta(minutes=5)).isoformat()
-#                 user_role = get_user_role(user)
+            # Remove session_key and data from cache and db
+            if session_key:
+                cache.delete(f"django.contrib.sessions.cached_db{session_key}")
+                Session.objects.filter(session_key=session_key).delete()
                 
-#                 return Response({
-#                     "access_token": str(refresh.access_token),
-#                     "refresh_token": str(refresh),
-#                     "access_token_expiry": access_token_expiry,
-#                     "user_role": user_role,
-#                     "user_id": user.id
-#                 }, status=200)
-#             else:
-#                 return Response({"error": "Authentication failed, user not found."}, status=400)
-#         except AuthException as e:
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-#         except Exception as e:
-#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({"success": "Logged out successfully"}, status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class SocialAuthView(APIView):
+    permission_classes = [AllowAny]
+    renderer_classes = [ViewRenderer]
+
+    @extend_schema(
+        summary="Social Login",
+        description="Login using social media accounts. (Google, Facebook, GitHub)",
+        request=SocialOAuthSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Login successful",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "success": {"type": "string", "example": "Logged in successfully"}
+                    }
+                }
+            ),
+            400: OpenApiResponse(
+                description="Invalid request",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "example": [
+                                "Token and provider are required",
+                                "Account is deactivated. Contact your admin.",
+                                "Authentication failed, user not found",
+                                "User with this email already created using password. Please login using password.",
+                                "User with this email already created using {auth_provider}. Please login using {auth_provider}."
+                            ]
+                        }
+                    }
+                }
+            ),
+            500: OpenApiResponse(
+                description="Internal Server Error",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {"type": "string", "example": "Internal Server Error"}
+                    },
+                },
+            ),
+        }
+    )
+    def post(self, request, *args, **kwargs):
+        token = request.data.get("token")
+        provider = request.data.get("provider")
+        if not token or not provider:
+            return Response({"error": "Token and provider are required"}, status=400)
+
+        try:
+            # Load social auth backend dynamically
+            strategy = load_strategy(request)
+            backend = load_backend(strategy, provider, redirect_uri=None)
+            user = backend.do_auth(token)
+            
+            if isinstance(user, Response):
+                return user
+            
+            if user:
+                if not user.is_active:
+                    return Response({"error": "Account is deactivated. Contact your admin."}, status=400)
+                # Generate session for user
+                login(request, user)
+                
+                session_id = request.session.session_key
+
+                return Response({"session_id": session_id}, status=status.HTTP_200_OK)
+            else:
+                return Response({"error": "Authentication failed, user not found."}, status=400)
+        except AuthException as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         
 # Changes in token, refreshtoken, logout, socialauth and user view
