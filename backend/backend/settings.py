@@ -60,8 +60,8 @@ else:
 APP_NAME = os.getenv("APP_NAME")
 
 INSTALLED_APPS = [
-    # 'core_db',
-    # 'auth_api',
+    'core_db',
+    'auth_api',
     'corsheaders',
     'rest_framework',
     'social_django',
@@ -250,7 +250,7 @@ REST_FRAMEWORK = {
         'drf_spectacular.openapi.AutoSchema'
     ),
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -311,7 +311,7 @@ CSRF_COOKIE_AGE = 60 * 60 * 24 # 1 day
 
 # User Settings
 
-# AUTH_USER_MODEL = 'core_db.User'
+AUTH_USER_MODEL = 'core_db.User'
 
 # Media Settings
 
@@ -338,12 +338,12 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 
 # Security Settings
 MAX_LOGIN_FAILURE_LIMIT = 5
-SECURE_BROWSER_XSS_FILTER = True
-X_FRAME_OPTIONS = 'DENY'
-SECURE_CONTENT_TYPE_NOSNIFF = True
+# SECURE_BROWSER_XSS_FILTER = True
+# X_FRAME_OPTIONS = 'DENY'
+# SECURE_CONTENT_TYPE_NOSNIFF = True
 
-# SECURE_SSL_REDIRECT = True  # Force HTTPS (use if Nginx is not used)
-SECURE_HSTS_SECONDS = 31536000  # Enforce HSTS for 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # Only if Nginx is reverse proxied
+# # SECURE_SSL_REDIRECT = True  # Force HTTPS (use if Nginx is not used)
+# SECURE_HSTS_SECONDS = 31536000  # Enforce HSTS for 1 year
+# SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+# SECURE_HSTS_PRELOAD = True
+# SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # Only if Nginx is reverse proxied

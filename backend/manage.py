@@ -7,6 +7,20 @@ import sys
 def main():
     """Run administrative tasks."""
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+    
+    #Initializing App Registry
+    import django
+    django.setup()
+
+    # Wait for the database before proceeding
+    try:
+        from django.core.management import call_command
+        call_command("wait_for_db")
+    except Exception as e:
+        print(f"Error while waiting for database: {type(e).__name__} : {e}")
+        sys.exit(1)
+    
+    # Execute the requested command
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
