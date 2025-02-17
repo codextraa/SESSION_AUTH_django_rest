@@ -37,10 +37,8 @@ from .serializers import (
     UserActionSerializer,
     RecaptchaSerializer,
     LoginSerializer,
-    LogoutSerializer,
     ResendOtpSerializer,
-    TokenRequestSerializer,
-    RefreshTokenSerializer,
+    SessionSerializer,
     PhoneVerificationSerializer,
     PasswordResetSerializer,
     VerificationThroughEmailSerializer,
@@ -533,7 +531,7 @@ class SessionView(APIView):
     @extend_schema(
         summary="Generate JWT tokens",
         description="Verifies OTP and generates JWT access and refresh tokens for the authenticated user.",
-        request=TokenRequestSerializer,
+        request=SessionSerializer,
         responses={
             200: OpenApiResponse(
                 description="Token response",
@@ -611,8 +609,13 @@ class SessionView(APIView):
             login(request, user)
             
             session_id = request.session.session_key
+            user_role = get_user_role(user)
 
-            return Response({"session_id": session_id}, status=status.HTTP_200_OK)
+            return Response({
+                "session_id": session_id,
+                "user_id": user.id,
+                "user_role": user_role                
+            }, status=status.HTTP_200_OK)
         
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -2183,8 +2186,13 @@ class SocialAuthView(APIView):
                 login(request, user)
                 
                 session_id = request.session.session_key
+                user_role = get_user_role(user)
 
-                return Response({"session_id": session_id}, status=status.HTTP_200_OK)
+                return Response({
+                    "session_id": session_id,
+                    "user_id": user.id,
+                    "user_role": user_role                
+                }, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Authentication failed, user not found."}, status=400)
         except AuthException as e:

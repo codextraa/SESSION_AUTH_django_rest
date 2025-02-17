@@ -185,18 +185,12 @@ class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True, write_only=True)
     
-class LogoutSerializer(serializers.Serializer):
-    refresh = serializers.CharField(required=True)
-    
 class ResendOtpSerializer(serializers.Serializer):
     user_id = serializers.CharField(required=True)
 
-class TokenRequestSerializer(serializers.Serializer):
+class SessionSerializer(serializers.Serializer):
     user_id = serializers.CharField(required=True)
     otp = serializers.CharField(required=True)
-    
-class RefreshTokenSerializer(serializers.Serializer):
-    refresh = serializers.CharField(required=True)
     
 class PhoneVerificationSerializer(serializers.Serializer):
     otp = serializers.CharField(required=True)

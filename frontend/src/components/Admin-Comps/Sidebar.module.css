@@ -1,0 +1,38 @@
+.sidebar {
+  width: 200px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-right: 1px solid #dee2e6;
+}
+
+.filterGroup {
+  margin-top: 10px;
+  margin-bottom: 20px;
+}
+
+.filterGroup h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+}
+
+.select {
+  width: 100%;
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+}
+
+.showAllButton {
+  padding: 10px 20px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.showAllButton:hover {
+  background-color: #5a6268;
+}
