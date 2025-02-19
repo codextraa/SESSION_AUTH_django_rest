@@ -2,8 +2,8 @@
 
 import {
   recaptchaVerify,
-  login, 
-  getToken, 
+  login,
+  getSession, 
   resendOtp, 
   socialOauth, 
   logout
@@ -81,11 +81,12 @@ export async function verifyOtpAction(formData) {
 
   try {
     // Call the backend API to verify OTP
-    const response = await getToken(otp);
+    const response = await getSession(otp);
 
-    if (response.access_token && response.refresh_token 
-        && response.user_role && response.user_id 
-        && response.access_token_expiry) {
+    if (
+      response.sessionid &&
+      response.csrftoken
+    ) {
         await setSessionCookie(response);
         // Return success response if OTP verification is successful
         return { success: 'OTP verified successfully' };
@@ -122,9 +123,10 @@ export async function socialLoginAction(provider, accessToken) {
       token: accessToken
     };
     const response = await socialOauth(auth_data)
-    if (response.access_token && response.refresh_token 
-      && response.user_role && response.user_id 
-      && response.access_token_expiry) {
+    if (
+      response.sessionid &&
+      response.csrftoken
+    ) {
       await setSessionCookie(response);
       // Return success response if OTP verification is successful
       return { success: 'Login successful' };

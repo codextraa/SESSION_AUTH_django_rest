@@ -20,30 +20,39 @@ export function validateSessionData(data) {
   };
   data.user_role = data.user_role.trim();
 
-  // Validate access_token (should be a non-empty string)
-  if (typeof data.access_token !== 'string' || data.access_token.trim() === '') {
+  // Validate the session(should be a non-empty string)
+  if (typeof data.sessionid !== 'string') {
     return null;
   };
-  data.access_token = data.access_token.trim();
-
-  // Validate refresh_token (should be a non-empty string)
-  if (typeof data.refresh_token !== 'string' || data.refresh_token.trim() === '') {
-    return null;
-  };
-  data.refresh_token = data.refresh_token.trim();
-
-  if (typeof data.access_token_expiry !== 'string' || data.access_token_expiry.trim() === '') {
-    return null;
-  };
-  data.access_token_expiry = data.access_token_expiry.trim();
+  data.sessionid = String(data.sessionid).trim();
 
   // Return sanitized and valid data
   return {
-    user_id: data.user_id,
-    user_role: data.user_role,
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    access_token_expiry: data.access_token_expiry
+    sessionid: data.sessionid
+  };
+};
+
+export function validateCSRFTokenData(data) {
+  // Check that the data is an object
+  if (typeof data !== 'object' || data === null) {
+    return null;
+  };
+
+  // Validate CSRFToken (should be a string)
+  if (typeof data.csrftoken !== 'string') {
+    return null;
+  };
+  data.csrftoken = String(data.csrftoken).trim();
+
+  if (typeof data.csrf_token_expiry !== 'string'){
+    return null;
+  };
+  data.csrf_token_expiry = String(data.csrf_token_expiry).trim();
+
+  // Return sanitized and valid data
+  return {
+    csrftoken: data.csrftoken,
+    csrf_token_expiry: data.csrf_token_expiry
   };
 };
 

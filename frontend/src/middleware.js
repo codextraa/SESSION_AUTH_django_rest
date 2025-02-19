@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import {
-  getAccessTokenExpiryFromSession,
-  updateSessionCookie,
+  getSessionIdFromSession,
   getCSRFTokenExpiryFromSession,
   setCSRFCookie
 } from "@/libs/cookie";
@@ -32,17 +31,9 @@ export async function middleware(req) {
     return undefined; // Allow access to API routes
   };
 
-  let isLoggedIn = await getAccessTokenExpiryFromSession();
-  let updatedCookie;
+  const isLoggedIn = await getSessionIdFromSession();
 
-  if (!isLoggedIn) {
-    updatedCookie = await updateSessionCookie(req);
-    if (updatedCookie) {
-      isLoggedIn = true;
-    }
-  };
-
-  let csrfToken = await getCSRFTokenExpiryFromSession();
+  const csrfToken = await getCSRFTokenExpiryFromSession();
   if (!csrfToken) {
     await setCSRFCookie();
   }
@@ -71,24 +62,6 @@ export async function middleware(req) {
     }
     return NextResponse.redirect(new URL(`${BASE_ROUTE}/auth/login`, req.url)); // Redirect to login page
   };
-
-  if (updatedCookie) {
-    const res = NextResponse.next();
-
-    // Set the updated session cookie in the response
-    // cookieStore takes time to set the cookie and update the client side
-    // therefore it is not available right at the moment the next request is called
-    // this is for the next response so that it gets the updated cookie value
-    res.cookies.set(updatedCookie.name, updatedCookie.value, {
-      httpOnly: updatedCookie.httpOnly,
-      secure: updatedCookie.secure,
-      maxAge: updatedCookie.maxAge,
-      path: updatedCookie.path,
-      sameSite: updatedCookie.sameSite,
-    });
-
-    return res;
-  }
 
   // If everything is fine, allow the request to continue
   return NextResponse.next();

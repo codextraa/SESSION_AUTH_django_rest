@@ -21,16 +21,12 @@ export const login = async (data) => {
   return apiClient.post('/login/', data);
 };
 
-export const getToken = async (data) => {
-  return apiClient.post('/token/', data);
+export const getSession = async (data) => {
+  return apiClient.post('/session/', data);
 };
 
 export const resendOtp = async (data) => {
   return apiClient.post('/resend-otp/', data);
-};
-
-export const refreshToken = async (refreshToken) => {
-  return await apiClient.post('/token/refresh/', { refresh: refreshToken });
 };
 
 export const verifyEmail = async (token, expiry) => {
@@ -65,11 +61,7 @@ export const resetPassword = async (token, expiry, data) => {
 };
 
 export const logout = async () => {
-  const refreshToken = await getRefreshTokenFromSession();
-
-  if (refreshToken) {
-    await apiClient.post('/logout/', { refresh: refreshToken });
-  };
+  await apiClient.post('/logout/', {});
 };
 
 export const socialOauth = async (data) => {

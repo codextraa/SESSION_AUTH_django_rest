@@ -1,5 +1,5 @@
 import { 
-  getAccessTokenFromSession,
+  getSessionIdFromSession,
   getCSRFTokenFromSession
 } from "./cookie";
 
@@ -92,7 +92,7 @@ export class ApiClient {
   async request(endpoint, method, data = null, additionalOptions = {}, isMultipart = false) {
     await this.throttle(endpoint);
 
-    const accessToken = await getAccessTokenFromSession();
+    const sessionid = await getSessionIdFromSession();
     const csrfToken = await getCSRFTokenFromSession();
     const url = `${this.baseURL}${endpoint}`;
 
@@ -100,8 +100,7 @@ export class ApiClient {
       method,
       headers: {
         "Accept": "application/json",
-        "Cookie": `csrftoken=${csrfToken}`,
-        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        "Cookie": `sessionid=${sessionid}csrftoken=${csrfToken}`,
         ...(csrfToken && { "X-CSRFToken" : csrfToken }),
         ...(HTTPS && { "Referer": process.env.NEXT_PUBLIC_BASE_HTTPS_URL }),
       },
