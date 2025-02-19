@@ -860,8 +860,8 @@ class PhoneVerifyView(APIView):
                     },
                 },
             ),
-            401: OpenApiResponse(
-                description="Unauthorized",
+            403: OpenApiResponse(
+                description="Forbidden",
                 response={
                     "type": "object",
                     "properties": {
@@ -937,8 +937,8 @@ class PhoneVerifyView(APIView):
                     },
                 },
             ),
-            401: OpenApiResponse(
-                description="Unauthorized",
+            403: OpenApiResponse(
+                description="Forbidden",
                 response={
                     "type": "object",
                     "properties": {
