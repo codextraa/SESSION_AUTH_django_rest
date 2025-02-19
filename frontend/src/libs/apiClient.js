@@ -23,14 +23,14 @@ export class ApiClient {
       console.warn(`Throttling: Waiting ${waitTime / 1000} seconds before sending request to ${endpoint}`);
 
       await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
+    };
 
     this.lastRequestTimes.set(endpoint, Date.now());
-  }
+  };
 
   async handleErrors(response) {
     const contentType = response.headers.get("Content-Type") || "";
-    const clonedResponse = response.clone();
+    // const clonedResponse = response.clone();
 
     if (response.ok) {
       if (contentType.includes("application/json")) {
@@ -66,21 +66,20 @@ export class ApiClient {
         } catch (e) {
           return { error: "Unexpected error occurred." };
         }
+      } else {
+        return { error: "Unexpected error occurred." };
       };
-      // } else {
-      //   return { error: "Unexpected error occurred." };
-      // };
 
-      try { // only for debugging
-        // Non-JSON error response
-        const errorText = await clonedResponse.text();
+      // try { // only for debugging
+      //   // Non-JSON error response
+      //   const errorText = await clonedResponse.text();
     
-        // Handle the error message here
-        return { error: errorText || 'Unexpected error occurred. Something went wrong' };
-      } catch (err) {
-        console.error('Error while reading the error response body:', err);
-        return { error: 'Unexpected error occurred. Something went wrong' };
-      };
+      //   // Handle the error message here
+      //   return { error: errorText || 'Unexpected error occurred. Something went wrong' };
+      // } catch (err) {
+      //   console.error('Error while reading the error response body:', err);
+      //   return { error: 'Unexpected error occurred. Something went wrong' };
+      // };
     };
 
     if (response.status >= 500) {

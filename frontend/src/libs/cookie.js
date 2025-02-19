@@ -1,5 +1,10 @@
 import { cookies } from 'next/headers';
-import { encrypt, decrypt, validateSessionData, validateCSRFTokenData } from './session';
+import { 
+  encrypt,
+  decrypt,
+  validateSessionData,
+  validateCSRFTokenData
+} from './session';
 import { getCSRFToken } from './api';
 import { BASE_ROUTE } from '@/route';
 
@@ -58,7 +63,7 @@ export const setCSRFCookie = async () => {
       throw new Error('Invalid CSRFToken');
     };
   
-    const encryptedSessionData = await encrypt(csrf_token_data);
+    const encryptedSessionData = await encrypt(validcsrftoken);
   
     const cookieStore = await cookies();
     cookieStore.set('__Secure-csrftoken', encryptedSessionData, {

@@ -530,20 +530,20 @@ class SessionView(APIView):
     renderer_classes = [ViewRenderer]
 
     @extend_schema(
-        summary="Generate JWT tokens",
-        description="Verifies OTP and generates JWT access and refresh tokens for the authenticated user.",
+        summary="Generate Session",
+        description="Verifies OTP and generates Session ID and new CSRFToken for the authenticated user.",
         request=SessionSerializer,
         responses={
             200: OpenApiResponse(
-                description="Token response",
+                description="Session response",
                 response={
                     "type": "object",
                     "properties": {
-                        "access_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"},
-                        "access": {"type": "string", "example": "JWT access token"},
-                        "refresh": {"type": "string", "example": "JWT refresh token"},
-                        "user_role": {"type": "string", "example": "Admin"},
+                        "sessionid": {"type": "string", "example": "sessionid"},
                         "user_id": {"type": "integer", "example": 1},
+                        "user_role": {"type": "string", "example": "Admin"},
+                        "csrf_token": {"type": "string", "example": "csrf_token"},
+                        "csrf_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"}
                     },
                 },
             ),
@@ -2066,7 +2066,7 @@ class LogoutView(APIView):
 
     @extend_schema(
         summary="Logout",
-        description="Logout by blacklisting the refresh token.",
+        description="Logout by deleting the sessionID from cache and db",
         request=None,
         responses={
             200: OpenApiResponse(
@@ -2079,19 +2079,13 @@ class LogoutView(APIView):
                 }
             ),
             400: OpenApiResponse(
-                description="Invalid request",
+                description="Bad Request - Invalid parameters",
                 response={
                     "type": "object",
                     "properties": {
-                        "errors": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "example": [
-                                "Tokens are required"
-                            ]
-                        }
-                    }
-                }
+                        "errors": {"type": "string", "example": "Invalid request parameters"}
+                    },
+                },
             ),
             500: OpenApiResponse(
                 description="Internal Server Error",
@@ -2132,13 +2126,17 @@ class SocialAuthView(APIView):
         request=SocialOAuthSerializer,
         responses={
             200: OpenApiResponse(
-                description="Login successful",
+                description="Session response",
                 response={
                     "type": "object",
                     "properties": {
-                        "success": {"type": "string", "example": "Logged in successfully"}
-                    }
-                }
+                        "sessionid": {"type": "string", "example": "sessionid"},
+                        "user_id": {"type": "integer", "example": 1},
+                        "user_role": {"type": "string", "example": "Admin"},
+                        "csrf_token": {"type": "string", "example": "csrf_token"},
+                        "csrf_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"}
+                    },
+                },
             ),
             400: OpenApiResponse(
                 description="Invalid request",
