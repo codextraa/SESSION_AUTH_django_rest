@@ -1,0 +1,1864 @@
+openapi: 3.0.3
+info:
+  title: ''
+  version: 0.0.0
+paths:
+  /auth-api/get-csrf-token/:
+    get:
+      operationId: auth_api_get_csrf_token_retrieve
+      description: Returns a CSRF token along with its expiration time.
+      summary: Get CSRF Token
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  csrf_token:
+                    type: string
+                    example: csrf_token
+                  csrf_token_expiry:
+                    type: string
+                    example: '2023-01-01T00:00:00Z'
+          description: CSRF token returned
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Invalid request parameters
+          description: Bad Request - Invalid parameters
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/login/:
+    post:
+      operationId: auth_api_login_create
+      description: Authenticates the user with email and password. If valid, an OTP
+        is sent to the registered email.
+      summary: Login to get an OTP
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Login'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Login'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Email sent
+                  otp:
+                    type: boolean
+                    example: true
+                  user_id:
+                    type: integer
+                    example: 1
+          description: OTP sent successfully
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Invalid credentials
+                    - Invalid credentials. You have X more attempt(s) before your
+                      account is deactivated.
+                    - Invalid credentials. Your account is deactivated. Verify your
+                      email.
+                    - Invalid credentials. Your account is deactivated. Contact an
+                      admin.
+                    - Email and password are required
+                    - This process cannot be used, as user is created using {auth_provider}
+                    - Email is not verified. You must verify your email first
+                    - Account is deactivated. Contact your admin
+                    - Something went wrong, could not send OTP. Try again
+          description: Bad Request - Various authentication errors
+        '429':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Request was throttled. Expected available in n seconds.
+          description: Too Many Requests - Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/logout/:
+    post:
+      operationId: auth_api_logout_create
+      description: Logout by deleting the sessionID from cache and db
+      summary: Logout
+      tags:
+      - auth-api
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Logged out successfully
+          description: Logout successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Invalid request parameters
+          description: Bad Request - Invalid parameters
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/recaptcha-verify/:
+    post:
+      operationId: auth_api_recaptcha_verify_create
+      description: Validates the provided reCAPTCHA token with Google's reCAPTCHA
+        service.
+      summary: Validate reCAPTCHA
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Recaptcha'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Recaptcha'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Recaptcha'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: reCAPTCHA validation successful.
+          description: reCAPTCHA validation successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Invalid reCAPTCHA token.
+          description: Bad Request - Invalid reCAPTCHA token or JSON
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/resend-otp/:
+    post:
+      operationId: auth_api_resend_otp_create
+      description: If the session is valid and the user exists, an OTP is resent to
+        the registered email address.
+      summary: Resend OTP
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResendOtp'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/ResendOtp'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ResendOtp'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Email sent
+                  otp:
+                    type: boolean
+                    example: true
+                  user_id:
+                    type: integer
+                    example: 1
+          description: Email sent successfully
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Session expired. Please login again.
+                    - Invalid Session
+                    - Invalid credentials
+                    - This process cannot be used, as user is created using {auth_provider}
+                    - Email is not verified. You must verify your email first
+                    - Account is deactivated. Contact your admin
+                    - Something went wrong, could not send OTP. Try again
+          description: Bad Request - Various errors related to invalid session, user
+            details, etc.
+        '429':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Request was throttled. Expected available in n seconds.
+          description: Too Many Requests - Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/reset-password/:
+    get:
+      operationId: auth_api_reset_password_retrieve
+      description: Verify the token and expiry provided in the query parameters to
+        validate the password reset link.
+      summary: Verify Password Reset Link
+      parameters:
+      - in: query
+        name: expiry
+        schema:
+          type: string
+        description: The expiry timestamp for the password reset link.
+        required: true
+      - in: query
+        name: token
+        schema:
+          type: string
+        description: The unique token for password reset verification.
+        required: true
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Password verification link ok
+          description: Password reset link verified successfully.
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Missing verification link.
+                    - The verification link has expired.
+                    - The verification link has expired.
+                    - Invalid verification link.
+          description: Invalid or expired password reset link.
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+    post:
+      operationId: auth_api_reset_password_create
+      description: Send a password reset link to the user's email address if it is
+        verified and active.
+      summary: Send Password Reset Link
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationThroughEmail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerificationThroughEmail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerificationThroughEmail'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Password reset link sent. Please check your email to
+                      reset your password.
+          description: Password reset link sent successfully.
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Invalid credentials
+                    - This process cannot be used, as user is created using {auth_provider}
+                    - Email is not verified. You must verify your email first
+                    - Account is deactivated. Contact your admin
+                    - Failed to send password reset link.
+          description: User not found or email not verified.
+        '429':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Request was throttled. Expected available in n seconds.
+          description: Too Many Requests - Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+    patch:
+      operationId: auth_api_reset_password_partial_update
+      description: Reset the user's password using the provided token, expiry, and
+        new password. Both passwords must match.
+      summary: Reset Password
+      parameters:
+      - in: query
+        name: expiry
+        schema:
+          type: string
+        description: The expiry timestamp for the password reset link.
+        required: true
+      - in: query
+        name: token
+        schema:
+          type: string
+        description: The unique token for password reset verification.
+        required: true
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedInputPasswordReset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedInputPasswordReset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedInputPasswordReset'
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Password reset successful
+          description: Password reset successful.
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Missing verification link.
+                    - The verification link has expired.
+                    - Invalid credentials
+                    - This process cannot be used, as user is created using {auth_provider}
+                    - Email is not verified. You must verify your email first
+                    - Account is deactivated. Contact your admin
+                    - Failed to send password reset link.
+                    - Password is required.
+                    - Passwords do not match
+                    - New password cannot be the same as the old password.
+                    - short: Password must be at least 8 characters long.
+                      lower: Password must contain at least one lowercase letter.
+                      upper: Password must contain at least one uppercase letter.
+                      number: Password must contain at least one number.
+                      special: Password must contain at least one special character.
+          description: Invalid or mismatched passwords, or user not valid.
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/schema/:
+    get:
+      operationId: auth_api_schema_retrieve
+      description: |-
+        OpenApi3 schema for this API. Format can be selected via content negotiation.
+
+        - YAML: application/vnd.oai.openapi
+        - JSON: application/vnd.oai.openapi+json
+      parameters:
+      - in: query
+        name: format
+        schema:
+          type: string
+          enum:
+          - json
+          - yaml
+      - in: query
+        name: lang
+        schema:
+          type: string
+          enum:
+          - af
+          - ar
+          - ar-dz
+          - ast
+          - az
+          - be
+          - bg
+          - bn
+          - br
+          - bs
+          - ca
+          - ckb
+          - cs
+          - cy
+          - da
+          - de
+          - dsb
+          - el
+          - en
+          - en-au
+          - en-gb
+          - eo
+          - es
+          - es-ar
+          - es-co
+          - es-mx
+          - es-ni
+          - es-ve
+          - et
+          - eu
+          - fa
+          - fi
+          - fr
+          - fy
+          - ga
+          - gd
+          - gl
+          - he
+          - hi
+          - hr
+          - hsb
+          - hu
+          - hy
+          - ia
+          - id
+          - ig
+          - io
+          - is
+          - it
+          - ja
+          - ka
+          - kab
+          - kk
+          - km
+          - kn
+          - ko
+          - ky
+          - lb
+          - lt
+          - lv
+          - mk
+          - ml
+          - mn
+          - mr
+          - ms
+          - my
+          - nb
+          - ne
+          - nl
+          - nn
+          - os
+          - pa
+          - pl
+          - pt
+          - pt-br
+          - ro
+          - ru
+          - sk
+          - sl
+          - sq
+          - sr
+          - sr-latn
+          - sv
+          - sw
+          - ta
+          - te
+          - tg
+          - th
+          - tk
+          - tr
+          - tt
+          - udm
+          - ug
+          - uk
+          - ur
+          - uz
+          - vi
+          - zh-hans
+          - zh-hant
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/vnd.oai.openapi:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/yaml:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/vnd.oai.openapi+json:
+              schema:
+                type: object
+                additionalProperties: {}
+            application/json:
+              schema:
+                type: object
+                additionalProperties: {}
+          description: ''
+  /auth-api/session/:
+    post:
+      operationId: auth_api_session_create
+      description: Verifies OTP and generates Session ID and new CSRFToken for the
+        authenticated user.
+      summary: Generate Session
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Session'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Session'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionid:
+                    type: string
+                    example: sessionid
+                  user_id:
+                    type: integer
+                    example: 1
+                  user_role:
+                    type: string
+                    example: Admin
+                  csrf_token:
+                    type: string
+                    example: csrf_token
+                  csrf_token_expiry:
+                    type: string
+                    example: '2023-01-01T00:00:00Z'
+          description: Session response
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Invalid OTP
+                    - Session expired. Please login again.
+                    - Invalid credentials
+                    - This process cannot be used, as user is created using {auth_provider}
+                    - Email is not verified. You must verify your email first
+                    - Account is deactivated. Contact your admin
+                    - Invalid Session
+          description: Bad Request - Various errors related to OTP verification or
+            session issues
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/social-auth/:
+    post:
+      operationId: auth_api_social_auth_create
+      description: Login using social media accounts. (Google, Facebook, GitHub)
+      summary: Social Login
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SocialOAuth'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SocialOAuth'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SocialOAuth'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionid:
+                    type: string
+                    example: sessionid
+                  user_id:
+                    type: integer
+                    example: 1
+                  user_role:
+                    type: string
+                    example: Admin
+                  csrf_token:
+                    type: string
+                    example: csrf_token
+                  csrf_token_expiry:
+                    type: string
+                    example: '2023-01-01T00:00:00Z'
+          description: Session response
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Token and provider are required
+                    - Account is deactivated. Contact your admin.
+                    - Authentication failed, user not found
+                    - User with this email already created using password. Please
+                      login using password.
+                    - User with this email already created using {auth_provider}.
+                      Please login using {auth_provider}.
+          description: Invalid request
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/users/:
+    get:
+      operationId: auth_api_users_list
+      description: List of all users using Pagination and Filters.
+      summary: Get All Users List
+      parameters:
+      - in: query
+        name: group
+        schema:
+          type: string
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: page_size
+        required: false
+        in: query
+        description: Number of results to return per page.
+        schema:
+          type: integer
+      - in: query
+        name: search
+        schema:
+          type: string
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedUserListList'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Invalid request parameters
+          description: Bad Request - Invalid parameters
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+    post:
+      operationId: auth_api_users_create
+      description: Create a new user or admin(only superuser can create).
+      summary: Create User
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateUser'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: User created successfully. Please verify your email to
+                      activate your account.
+          description: Creation successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Please confirm your password.
+                    - Passwords do not match
+                    - Failed to send email verification link.
+                    - email:
+                      - user with this email already exists.
+                      - Enter a valid email address.
+                      username:
+                      - user with this username already exists.
+                      - Username must be at least 6 characters long.
+                      phone_number:
+                      - The phone number entered is not valid.
+                      password:
+                        short: Password must be at least 8 characters long.
+                        lower: Password must contain at least one lowercase letter.
+                        upper: Password must contain at least one uppercase letter.
+                        number: Password must contain at least one number.
+                        special: Password must contain at least one special character.
+          description: Invalid request
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - You do not have permission to create a superuser. Contact Developer.
+                    - You do not have permission to create an admin user.
+                    - Profile Image cannot be updated here. Use the Upload Image Action.
+                    - Forbidden fields cannot be updated.
+          description: Permission Denied
+        '429':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Request was throttled. Expected available in n seconds.
+          description: Too Many Requests - Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/users/{id}/:
+    get:
+      operationId: auth_api_users_retrieve
+      description: Get everything of a single user by ID.
+      summary: Get Single User
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Invalid request parameters
+          description: Bad Request - Invalid parameters
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+    patch:
+      operationId: auth_api_users_partial_update
+      description: Update an existing user's profile
+      summary: Update User
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUpdateUser'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: User profile updated successfully.
+          description: Update successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - username:
+                      - user with this username already exists.
+                      - Username must be at least 6 characters long.
+                      phone_number:
+                      - The phone number entered is not valid.
+          description: Invalid request
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - You cannot update the email field.
+                    - Password reset cannot be done without verification link.
+                    - Profile Image cannot be updated here. Use the Upload Image Action.
+                    - Forbidden fields cannot be updated.
+                    - You do not have permission to update this user.
+          description: Permission Denied
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+    delete:
+      operationId: auth_api_users_destroy
+      description: Delete a deactivated user
+      summary: Delete User
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: User example.com deleted successfully.
+          description: Deletion successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: You must deactivate the user before deleting it.
+          description: Invalid request
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Only superusers can delete users.
+                    - You cannot delete superusers
+          description: Permission Denied
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/users/{id}/activate-user/:
+    patch:
+      operationId: auth_api_users_activate_user_partial_update
+      description: Activate a deactivated user
+      summary: Activate User
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAction'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: User example.com has been reactivated.
+          description: Activation successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: User is already deactivated.
+          description: Invalid request
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - You do not have permission to activate users.
+                    - You cannot activate yourself.
+                    - Only superusers can activate staff users.
+          description: Permission Denied
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/users/{id}/deactivate-user/:
+    patch:
+      operationId: auth_api_users_deactivate_user_partial_update
+      description: Deactivate an activated user
+      summary: Deactivate User
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAction'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAction'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserAction'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: User example.com has been deactivated.
+          description: Deactivation successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: User is already deactivated.
+          description: Invalid request
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - You do not have permission to deactivate users.
+                    - You cannot deactivate yourself as a superuser.
+                    - You cannot deactivate yourself as a staff. Contact a superuser
+                    - Only superusers can deactivate staff users.
+                    - You cannot deactivate a superuser.
+          description: Permission Denied
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/users/{id}/upload-image/:
+    patch:
+      operationId: auth_api_users_upload_image_partial_update
+      description: Upload an image for the user's profile
+      summary: Upload Profile Image
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this user.
+        required: true
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                profile_img:
+                  type: string
+                  format: binary
+                  description: The image file to upload
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Image uploaded successfully.
+          description: Image uploaded
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - No profile image provided.
+                    - profile_img:
+                      - Profile image is required.
+                      - size: Profile image size should not exceed 2MB.
+                        type: Profile image type should be JPEG, PNG
+          description: Invalid request
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: You do not have permission to upload an image for this
+                      user.
+          description: Permission Denied
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/verify-email/:
+    get:
+      operationId: auth_api_verify_email_retrieve
+      description: This endpoint verifies the user's email address using a token and
+        expiry time sent during registration.
+      summary: Verify user's email address
+      parameters:
+      - in: query
+        name: expiry
+        schema:
+          type: integer
+        description: The expiry timestamp for the verification link (in seconds since
+          the epoch).
+        required: true
+      - in: query
+        name: token
+        schema:
+          type: string
+        description: The unique token for email verification, sent to the user's email.
+        required: true
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Email verified successfully
+          description: Email verification successful
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Missing verification link.
+                    - The verification link has expired.
+                    - Invalid verification link
+                    - Invalid credentials
+          description: Invalid or expired token or user not found
+    post:
+      operationId: auth_api_verify_email_create
+      description: This endpoint sends an email verification link to the user's email
+        address.
+      summary: Send an email verification link
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationThroughEmail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/VerificationThroughEmail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VerificationThroughEmail'
+        required: true
+      security:
+      - cookieAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Verification link sent. Please verify your email to activate
+                      your account.
+          description: Verification link sent successfully
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Invalid credentials
+                    - This process cannot be used, as user is created using {auth_provider}
+                    - Email already verified
+                    - Failed to send email verification link.
+                    - Verification link sent. Please verify your email to activate
+                      your account.
+          description: Invalid email address or user not found
+        '429':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Request was throttled. Expected available in n seconds.
+          description: Too Many Requests - Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+  /auth-api/verify-phone/:
+    post:
+      operationId: auth_api_verify_phone_create
+      description: This endpoint sends an OTP to the user's phone number.
+      summary: Send OTP to Phone
+      tags:
+      - auth-api
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: OTP sent successfully
+          description: OTP sent successfully
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - Something went wrong, could not send OTP. Try again
+                    - Invalid phone number
+          description: Failed to send OTP
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Authentication credentials were not provided.
+          description: Forbidden
+        '429':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Request was throttled. Expected available in n seconds.
+          description: Too Many Requests - Rate limit exceeded
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+    patch:
+      operationId: auth_api_verify_phone_partial_update
+      description: This endpoint verifies the user's phone number using an OTP.
+      summary: Phone Verification
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneVerification'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneVerification'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPhoneVerification'
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: string
+                    example: Phone verified successfully
+          description: Phone verified successfully
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: array
+                    items:
+                      type: string
+                    example:
+                    - OTP is required
+                    - Invalid OTP
+          description: Invalid OTP
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Authentication credentials were not provided.
+          description: Forbidden
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
+components:
+  schemas:
+    CreateUser:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        c_password:
+          type: string
+        username:
+          type: string
+        first_name:
+          type: string
+        last_name:
+          type: string
+        phone_number:
+          type: string
+        is_staff:
+          type: boolean
+          default: false
+      required:
+      - c_password
+      - email
+      - password
+    Login:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          writeOnly: true
+      required:
+      - email
+      - password
+    PaginatedUserListList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/UserList'
+    PatchedInputPasswordReset:
+      type: object
+      properties:
+        password:
+          type: string
+        c_password:
+          type: string
+    PatchedPhoneVerification:
+      type: object
+      properties:
+        otp:
+          type: string
+    PatchedUpdateUser:
+      type: object
+      properties:
+        first_name:
+          type: string
+        last_name:
+          type: string
+        username:
+          type: string
+        phone_number:
+          type: string
+    PatchedUserAction:
+      type: object
+      description: Action User Serializer
+      properties:
+        id:
+          type: integer
+          readOnly: true
+    Recaptcha:
+      type: object
+      properties:
+        recaptcha_token:
+          type: string
+      required:
+      - recaptcha_token
+    ResendOtp:
+      type: object
+      properties:
+        user_id:
+          type: string
+      required:
+      - user_id
+    Session:
+      type: object
+      properties:
+        user_id:
+          type: string
+        otp:
+          type: string
+      required:
+      - otp
+      - user_id
+    SocialOAuth:
+      type: object
+      properties:
+        token:
+          type: string
+        provider:
+          type: string
+      required:
+      - provider
+      - token
+    User:
+      type: object
+      description: User Serializer
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          writeOnly: true
+          maxLength: 128
+        username:
+          type: string
+          nullable: true
+          pattern: ^\S+$
+          maxLength: 255
+        first_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        last_name:
+          type: string
+          nullable: true
+          maxLength: 50
+        phone_number:
+          type: string
+          nullable: true
+          maxLength: 128
+        profile_img:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          nullable: true
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        is_active:
+          type: boolean
+        is_staff:
+          type: boolean
+        is_superuser:
+          type: boolean
+          readOnly: true
+          title: Superuser status
+          description: Designates that this user has all permissions without explicitly
+            assigning them.
+        is_email_verified:
+          type: boolean
+          readOnly: true
+        is_phone_verified:
+          type: boolean
+          readOnly: true
+      required:
+      - email
+      - id
+      - is_email_verified
+      - is_phone_verified
+      - is_superuser
+      - password
+      - profile_img
+    UserList:
+      type: object
+      description: List User Serializer
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        username:
+          type: string
+          readOnly: true
+          nullable: true
+        is_active:
+          type: boolean
+          readOnly: true
+        is_staff:
+          type: boolean
+          readOnly: true
+      required:
+      - email
+      - id
+      - is_active
+      - is_staff
+      - username
+    VerificationThroughEmail:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
