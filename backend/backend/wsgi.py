@@ -12,31 +12,38 @@ from django.core.wsgi import get_wsgi_application
 from django.utils.timezone import now
 from django.contrib.sessions.models import Session
 from django.core.cache import cache
+from django.contrib.sessions.backends.db import SessionStore
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
 
 application = get_wsgi_application()
 
+stop_event = threading.Event()  # Allows graceful stopping of thread
+
 def cleanup_sessions():
-    """Thread function to clean up expired sessions and clear them from cache."""
-    while True:
-        # Fetch expired sessions from the database
-        expired_sessions = Session.objects.filter(expire_date__lt=now())
-        count = 0
-        for session in expired_sessions:
-            session_key = session.session_key  # Get session key before deletion
-            
-            # Delete from cache (Redis)
-            cache_key = f"django.contrib.sessions.cached_db{session_key}"
-            cache.delete(cache_key)
+    """Thread function to clean up expired sessions from database and cache."""
+    while not stop_event.is_set():
+        try:
+            # Fetch and delete expired sessions from DB in bulk
+            expired_sessions = Session.objects.filter(expire_date__lt=now())
+            count = expired_sessions.count()
 
-            # Delete from database
-            session.delete()
-            count += 1
+            for session in expired_sessions:
+                session_key = session.session_key
+                
+                # Construct the correct cache key
+                cache_key = f"django.contrib.sessions.cached_db{session_key}"
+                cache.delete(cache_key)  # Delete session from cache
 
-        print(f"Deleted {count} expired session(s)")
-        # Wait for 24 hours before running again
-        time.sleep(86400)
+            expired_sessions.delete()  # Bulk delete all expired sessions
+
+            print(f"Deleted {count} expired session(s)")
+
+        except Exception as e:
+            print(f"Session cleanup error: {e}")
+
+        # Wait for 1 hour before running again
+        time.sleep(3600)
 
 # Start background thread
 thread = threading.Thread(target=cleanup_sessions, daemon=True)

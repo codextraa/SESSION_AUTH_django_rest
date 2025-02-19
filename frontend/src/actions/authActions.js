@@ -82,10 +82,11 @@ export async function verifyOtpAction(formData) {
   try {
     // Call the backend API to verify OTP
     const response = await getSession(otp);
+    console.log(response);
 
     if (
-      response.sessionid &&
-      response.csrftoken
+      response.user_id && response.user_role && response.sessionid &&
+      response.csrf_token && response.csrf_token_expiry
     ) {
         await setSessionCookie(response);
         // Return success response if OTP verification is successful
@@ -124,8 +125,8 @@ export async function socialLoginAction(provider, accessToken) {
     };
     const response = await socialOauth(auth_data)
     if (
-      response.sessionid &&
-      response.csrftoken
+      response.user_id && response.user_role && response.sessionid &&
+      response.csrf_token && response.csrf_token_expiry
     ) {
       await setSessionCookie(response);
       // Return success response if OTP verification is successful

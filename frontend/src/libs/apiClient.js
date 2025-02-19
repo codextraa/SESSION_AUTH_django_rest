@@ -30,7 +30,7 @@ export class ApiClient {
 
   async handleErrors(response) {
     const contentType = response.headers.get("Content-Type") || "";
-    // const clonedResponse = response.clone();
+    const clonedResponse = response.clone();
 
     if (response.ok) {
       if (contentType.includes("application/json")) {
@@ -66,20 +66,21 @@ export class ApiClient {
         } catch (e) {
           return { error: "Unexpected error occurred." };
         }
-      } else {
-        return { error: "Unexpected error occurred." };
-      }
-
-      // try { // only for debugging
-      //   // Non-JSON error response
-      //   const errorText = await clonedResponse.text();
-    
-      //   // Handle the error message here
-      //   return { error: errorText || 'Unexpected error occurred. Something went wrong' };
-      // } catch (err) {
-      //   console.error('Error while reading the error response body:', err);
-      //   return { error: 'Unexpected error occurred. Something went wrong' };
+      };
+      // } else {
+      //   return { error: "Unexpected error occurred." };
       // };
+
+      try { // only for debugging
+        // Non-JSON error response
+        const errorText = await clonedResponse.text();
+    
+        // Handle the error message here
+        return { error: errorText || 'Unexpected error occurred. Something went wrong' };
+      } catch (err) {
+        console.error('Error while reading the error response body:', err);
+        return { error: 'Unexpected error occurred. Something went wrong' };
+      };
     };
 
     if (response.status >= 500) {
@@ -96,11 +97,21 @@ export class ApiClient {
     const csrfToken = await getCSRFTokenFromSession();
     const url = `${this.baseURL}${endpoint}`;
 
+    let cookieHeader = "";
+
+    if (csrfToken) {
+      cookieHeader += `csrftoken=${csrfToken}; `;
+    };
+
+    if (sessionid) {
+      cookieHeader += `sessionid=${sessionid};`;
+    };
+
     let options = {
       method,
       headers: {
         "Accept": "application/json",
-        "Cookie": `sessionid=${sessionid}csrftoken=${csrfToken}`,
+        ...(cookieHeader && { "Cookie": cookieHeader.trim() }),
         ...(csrfToken && { "X-CSRFToken" : csrfToken }),
         ...(HTTPS && { "Referer": process.env.NEXT_PUBLIC_BASE_HTTPS_URL }),
       },

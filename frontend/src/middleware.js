@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import {
   getSessionIdFromSession,
   getCSRFTokenExpiryFromSession,
-  setCSRFCookie
+  setCSRFCookie,
+  getCSRFTokenFromSession
 } from "@/libs/cookie";
 import {
   BASE_ROUTE,
@@ -32,6 +33,8 @@ export async function middleware(req) {
   };
 
   const isLoggedIn = await getSessionIdFromSession();
+  const csrftoken_token = await getCSRFTokenFromSession();
+  console.log(csrftoken_token);
 
   const csrfToken = await getCSRFTokenExpiryFromSession();
   if (!csrfToken) {

@@ -204,7 +204,8 @@ class CSRFTokenView(APIView):
         """Get Method for CSRF Token."""
         try:
             csrf_token = get_token(request)
-            csrf_token_expiry = datetime.now(timezone.utc) + timedelta(days=1)
+            # Substracting a minute so that frontend request doesn't give token expired error
+            csrf_token_expiry = datetime.now(timezone.utc) + timedelta(days=1) - timedelta(minutes=1)
             return Response(
                 {"csrf_token": csrf_token, "csrf_token_expiry": csrf_token_expiry.isoformat()},
                 status=status.HTTP_200_OK
@@ -608,13 +609,18 @@ class SessionView(APIView):
             
             login(request, user)
             
-            session_id = request.session.session_key
+            sessionid = request.session.session_key
+            csrf_token = get_token(request)
+            # Substracting a minute so that frontend request doesn't give token expired error
+            csrf_token_expiry = datetime.now(timezone.utc) + timedelta(days=1) - timedelta(minutes=1)
             user_role = get_user_role(user)
 
             return Response({
-                "session_id": session_id,
+                "sessionid": sessionid,
                 "user_id": user.id,
-                "user_role": user_role                
+                "user_role": user_role, 
+                "csrf_token": csrf_token,
+                "csrf_token_expiry": csrf_token_expiry.isoformat()           
             }, status=status.HTTP_200_OK)
         
         except Exception as e:
@@ -2185,13 +2191,18 @@ class SocialAuthView(APIView):
                 # Generate session for user
                 login(request, user)
                 
-                session_id = request.session.session_key
+                sessionid = request.session.session_key
+                csrf_token = get_token(request)
+                # Substracting a minute so that frontend request doesn't give token expired error
+                csrf_token_expiry = datetime.now(timezone.utc) + timedelta(days=1) - timedelta(minutes=1)
                 user_role = get_user_role(user)
-
+                
                 return Response({
-                    "session_id": session_id,
+                    "sessionid": sessionid,
                     "user_id": user.id,
-                    "user_role": user_role                
+                    "user_role": user_role, 
+                    "csrf_token": csrf_token,
+                    "csrf_token_expiry": csrf_token_expiry.isoformat()           
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Authentication failed, user not found."}, status=400)

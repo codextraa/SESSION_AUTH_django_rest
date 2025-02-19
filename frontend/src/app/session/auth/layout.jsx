@@ -1,16 +1,14 @@
 import '@/styles/globals.css';
-import Navbar from '@/components/Navbar/Navbar';
 
 
 export const metadata = {
-  title: 'JWT Auth',
-  description: 'JWT Auth',
+  title: 'SESSION Auth',
+  description: 'SESSION Auth',
 }
 
 export default function RootLayout({ children }) {
   return (
     <>
-      <Navbar />
       {children}
     </>
   );

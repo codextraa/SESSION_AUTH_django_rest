@@ -32,7 +32,7 @@ export default function Navbar() {
   return (
     <nav className={styles.navbar}>
       <div>
-        <Link href={`${BASE_ROUTE}/`} className={styles.logo}>JWT-AUTH</Link>
+        <Link href={`${BASE_ROUTE}/`} className={styles.logo}>SESSION-AUTH</Link>
       </div>
       <div className={styles.navLinks}>
         {userId && (

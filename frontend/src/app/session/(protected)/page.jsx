@@ -4,7 +4,7 @@ export default function Page() {
   return (
     <div>
       <h1 className={styles.titleh1}>
-        Welcome to JWT Authentication
+        Welcome to SESSION Authentication
       </h1>
       <h2 className={styles.titleh2}>
         Created Using Nextjs and Django

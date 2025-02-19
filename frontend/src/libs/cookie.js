@@ -31,6 +31,7 @@ export const setSessionCookie = async (data) => {
       path: BASE_ROUTE, // Dynamic path
       sameSite: 'lax', // Helps prevent CSRF attacks
     });
+    console.log('csrftoken cookie', cookieStore.get('__Secure-csrftoken'));
 
     cookieStore.set('__Secure-session', encryptedSessionData, {
       httpOnly: true,
@@ -51,7 +52,7 @@ export const setCSRFCookie = async () => {
   try {
     const csrf_token_data = await getCSRFToken();
   
-    const validcsrftoken = validateCSRFTokenData(data);
+    const validcsrftoken = validateCSRFTokenData(csrf_token_data);
   
     if (!validcsrftoken) {
       throw new Error('Invalid CSRFToken');

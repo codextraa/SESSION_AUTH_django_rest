@@ -28,6 +28,8 @@ export function validateSessionData(data) {
 
   // Return sanitized and valid data
   return {
+    user_id: data.user_id,
+    user_role: data.user_role,
     sessionid: data.sessionid
   };
 };
@@ -39,10 +41,10 @@ export function validateCSRFTokenData(data) {
   };
 
   // Validate CSRFToken (should be a string)
-  if (typeof data.csrftoken !== 'string') {
+  if (typeof data.csrf_token !== 'string') {
     return null;
   };
-  data.csrftoken = String(data.csrftoken).trim();
+  data.csrf_token = String(data.csrf_token).trim();
 
   if (typeof data.csrf_token_expiry !== 'string'){
     return null;
@@ -51,7 +53,7 @@ export function validateCSRFTokenData(data) {
 
   // Return sanitized and valid data
   return {
-    csrftoken: data.csrftoken,
+    csrf_token: data.csrf_token,
     csrf_token_expiry: data.csrf_token_expiry
   };
 };
