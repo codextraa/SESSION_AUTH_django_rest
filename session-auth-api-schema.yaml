@@ -697,6 +697,9 @@ paths:
                   sessionid:
                     type: string
                     example: sessionid
+                  session_token_expiry:
+                    type: string
+                    example: '2023-01-01T00:00:00Z'
                   user_id:
                     type: integer
                     example: 1
@@ -740,6 +743,74 @@ paths:
                     type: string
                     example: Internal Server Error
           description: Internal Server Error
+  /auth-api/session/refresh/:
+    post:
+      operationId: auth_api_session_refresh_create
+      description: Gets the previous Session ID and generates Session ID and new CSRFToken
+        for the authenticated user.
+      summary: Refresh Session
+      tags:
+      - auth-api
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Session'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Session'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Session'
+        required: true
+      security:
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sessionid:
+                    type: string
+                    example: sessionid
+                  session_token_expiry:
+                    type: string
+                    example: '2023-01-01T00:00:00Z'
+                  user_id:
+                    type: integer
+                    example: 1
+                  user_role:
+                    type: string
+                    example: Admin
+                  csrf_token:
+                    type: string
+                    example: csrf_token
+                  csrf_token_expiry:
+                    type: string
+                    example: '2023-01-01T00:00:00Z'
+          description: Session response
+        '400':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Invalid Session
+          description: Bad Request - Invalid Session or Session expired
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errors:
+                    type: string
+                    example: Internal Server Error
+          description: Internal Server Error
   /auth-api/social-auth/:
     post:
       operationId: auth_api_social_auth_create
@@ -772,6 +843,9 @@ paths:
                   sessionid:
                     type: string
                     example: sessionid
+                  session_token_expiry:
+                    type: string
+                    example: '2023-01-01T00:00:00Z'
                   user_id:
                     type: integer
                     example: 1

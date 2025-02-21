@@ -540,6 +540,7 @@ class SessionView(APIView):
                     "type": "object",
                     "properties": {
                         "sessionid": {"type": "string", "example": "sessionid"},
+                        "session_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"},
                         "user_id": {"type": "integer", "example": 1},
                         "user_role": {"type": "string", "example": "Admin"},
                         "csrf_token": {"type": "string", "example": "csrf_token"},
@@ -637,6 +638,45 @@ class RefreshSessionView(APIView):
     permission_classes = [IsAuthenticated]  # Requires to be authenticated
     renderer_classes = [ViewRenderer]
 
+    @extend_schema(
+        summary="Refresh Session",
+        description="Gets the previous Session ID and generates Session ID and new CSRFToken for the authenticated user.",
+        request=SessionSerializer,
+        responses={
+            200: OpenApiResponse(
+                description="Session response",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "sessionid": {"type": "string", "example": "sessionid"},
+                        "session_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"},
+                        "user_id": {"type": "integer", "example": 1},
+                        "user_role": {"type": "string", "example": "Admin"},
+                        "csrf_token": {"type": "string", "example": "csrf_token"},
+                        "csrf_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"}
+                    },
+                },
+            ),
+            400: OpenApiResponse(
+                description="Bad Request - Invalid Session or Session expired",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {"type": "string", "example": "Invalid Session"}
+                    },
+                },
+            ),
+            500: OpenApiResponse(
+                description="Internal Server Error",
+                response={
+                    "type": "object",
+                    "properties": {
+                        "errors": {"type": "string", "example": "Internal Server Error"}
+                    },
+                },
+            ),
+        }
+    )
     def post(self, request, *args, **kwargs):
         try:
             # Get the current authenticated user
@@ -2187,6 +2227,7 @@ class SocialAuthView(APIView):
                     "type": "object",
                     "properties": {
                         "sessionid": {"type": "string", "example": "sessionid"},
+                        "session_token_expiry": {"type": "string", "example": "2023-01-01T00:00:00Z"},
                         "user_id": {"type": "integer", "example": 1},
                         "user_role": {"type": "string", "example": "Admin"},
                         "csrf_token": {"type": "string", "example": "csrf_token"},
@@ -2267,5 +2308,3 @@ class SocialAuthView(APIView):
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
-        
-# Changes in token, refreshtoken, logout, socialauth and user view
