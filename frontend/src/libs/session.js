@@ -26,11 +26,17 @@ export function validateSessionData(data) {
   };
   data.sessionid = String(data.sessionid).trim();
 
+  if (typeof data.session_expiry !== 'string'){
+    return null;
+  };
+  data.session_expiry = String(data.session_expiry).trim();
+
   // Return sanitized and valid data
   return {
     user_id: data.user_id,
     user_role: data.user_role,
-    sessionid: data.sessionid
+    sessionid: data.sessionid,
+    session_expiry: data.session_expiry
   };
 };
 

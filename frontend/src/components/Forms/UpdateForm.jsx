@@ -62,10 +62,14 @@ export default function UpdatePage({ params }) {
   };
 
   const handleUpdate = async (formData) => {
-    if (formData.get('username') === user.username && 
-    formData.get('first_name') === user.first_name &&
-    formData.get('last_name') === user.last_name &&
-    formData.get('phone_number') === user.phone_number) {
+    if ((formData.get('username') === user.username
+      || !formData.get('username')) && 
+    (formData.get('first_name') === user.first_name
+      || (!formData.get('first_name') && !user.first_name)) &&
+    (formData.get('last_name') === user.last_name
+      || (!formData.get('last_name') && !user.last_name)) &&
+    (formData.get('phone_number') === user.phone_number
+      || (!formData.get('phone_number') && !user.phone_number))) {
       setSuccess("");
       setError("No changes found.");
       setUpdateErrors("");

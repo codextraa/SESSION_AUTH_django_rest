@@ -5,7 +5,7 @@ import {
   validateSessionData,
   validateCSRFTokenData
 } from './session';
-import { getCSRFToken } from './api';
+import { getCSRFToken, refreshSession } from './api';
 import { BASE_ROUTE } from '@/route';
 
 export const setSessionCookie = async (data) => {
@@ -36,7 +36,6 @@ export const setSessionCookie = async (data) => {
       path: BASE_ROUTE, // Dynamic path
       sameSite: 'lax', // Helps prevent CSRF attacks
     });
-    console.log('csrftoken cookie', cookieStore.get('__Secure-csrftoken'));
 
     cookieStore.set('__Secure-session', encryptedSessionData, {
       httpOnly: true,
@@ -77,6 +76,28 @@ export const setCSRFCookie = async () => {
     console.error('Error setting csrftoken:', error);
     throw new Error('Failed to set CSRFToken')
   }
+};
+
+export const updateSessionCookie = async (req) => {
+  const session = req.cookies.get('__Secure-session');
+
+  if (!session) {
+    return false;
+  };
+
+  const response = await refreshSession();
+
+  if (
+    response.user_id && response.user_role && 
+    response.sessionid && response.session_expiry &&
+    response.csrf_token && response.csrf_token_expiry
+  ) {
+    return await setSessionCookie(response);
+  } else {
+    await deleteSessionCookie();
+    await deleteCSRFCookie();
+    return false;
+  };
 };
 
 export const deleteSessionCookie = async () => {
@@ -142,7 +163,22 @@ export const getCSRFTokenExpiryFromSession = async () => {
 
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
-    return decryptedData?.csrf_token_expiry || null; // Return user_id if present
+
+    if (decryptedData && decryptedData.csrf_token_expiry) { // Check if access_token_expiry is present
+      const expiryDate = new Date(decryptedData.csrf_token_expiry);
+      const currentDate = new Date();
+
+      // Compare the expiry date with the current date
+      if (currentDate > expiryDate) {
+        console.warn("CSRF has expired");
+        return false;
+      } else {
+        console.warn("CSRF is still valid");
+        return true;
+      };
+    };
+
+    return false; // Return access_token_expiry if present
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
@@ -205,6 +241,42 @@ export const getSessionIdFromSession = async () =>  {
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
     return decryptedData?.sessionid || null; // Return sessionid if present
+  } catch (error) {
+    console.error('Error decrypting session data:', error);
+    return null; // Return null if decryption fails
+  };
+};
+
+export const getSessionExpiryFromSession = async () => {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get('__Secure-session'); // Retrieve the session cookie
+
+  if (!sessionCookie) {
+    return null; // No session cookie found
+  };
+
+  if (!sessionCookie.value) {
+    return null; // No session cookie value found
+  };
+
+  try {
+    const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
+
+    if (decryptedData && decryptedData.session_expiry) { // Check if access_token_expiry is present
+      const expiryDate = new Date(decryptedData.session_expiry);
+      const currentDate = new Date();
+
+      // Compare the expiry date with the current date
+      if (currentDate > expiryDate) {
+        console.warn("Session has expired");
+        return false;
+      } else {
+        console.warn("Session is still valid");
+        return true;
+      };
+    };
+
+    return false; // Return access_token_expiry if present
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails

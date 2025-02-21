@@ -117,10 +117,24 @@ class UserSerializer(serializers.ModelSerializer):
         
         attrs = super().validate(attrs)
         
-        if attrs.get('first_name'):
+        first_name = attrs.get('first_name')
+        last_name = attrs.get('last_name')
+        phone_number = attrs.get('phone_number')
+                
+        if first_name:
             attrs['first_name'] = attrs['first_name'].title()
-        if attrs.get('last_name'):
+        else:
+            attrs['first_name'] = None
+            
+        if last_name:
             attrs['last_name'] = attrs['last_name'].title()
+        else:
+            attrs['last_name'] = None
+            
+        if phone_number:
+            attrs['phone_number'] = phone_number
+        else:
+            attrs['phone_number'] = None
         
         return attrs
     

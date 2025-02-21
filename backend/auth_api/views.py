@@ -613,19 +613,75 @@ class SessionView(APIView):
             csrf_token = get_token(request)
             # Substracting a minute so that frontend request doesn't give token expired error
             csrf_token_expiry = datetime.now(timezone.utc) + timedelta(days=1) - timedelta(minutes=1)
+            session_expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
             user_role = get_user_role(user)
+            
+            # Delete cache entries after successful login
+            cache.delete(f"email_{user.id}")
+            cache.delete(f"password_{user.id}")
 
             return Response({
                 "sessionid": sessionid,
+                "session_expiry": session_expiry.isoformat(),        
                 "user_id": user.id,
                 "user_role": user_role, 
                 "csrf_token": csrf_token,
-                "csrf_token_expiry": csrf_token_expiry.isoformat()           
+                "csrf_token_expiry": csrf_token_expiry.isoformat()
             }, status=status.HTTP_200_OK)
         
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
       
+class RefreshSessionView(APIView):
+    """Refresh Session View to generate a new session ID and CSRF token."""
+    permission_classes = [IsAuthenticated]  # Requires to be authenticated
+    renderer_classes = [ViewRenderer]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            # Get the current authenticated user
+            user = request.user
+            
+            if not user or not user.is_authenticated:
+                return Response({"error": "Invalid Session"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Log out to terminate the current session
+            session_key = request.session.session_key            
+            logout(request)
+            
+            # Remove session_key and data from cache and db
+            if session_key:
+                cache.delete(f"django.contrib.sessions.cached_db{session_key}")
+                Session.objects.filter(session_key=session_key).delete()
+
+            # Log the user back in to create a new session
+            login(request, user, backend='django.contrib.auth.backends.ModelBackend')
+
+            # Get new session ID and CSRF token
+            new_session_id = request.session.session_key
+            new_csrf_token = get_token(request)
+
+            # Calculate expiry times (matching SessionView)
+            session_expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+            # Substracting a minute so that frontend request doesn't give token expired error
+            csrf_token_expiry = datetime.now(timezone.utc) + timedelta(days=1) - timedelta(minutes=1)
+
+            # Get user role (assuming this function exists and works without cache)
+            user_role = get_user_role(user)
+
+            # Return response matching SessionView
+            return Response({
+                "sessionid": new_session_id,
+                "session_expiry": session_expiry.isoformat(),
+                "user_id": user.id,
+                "user_role": user_role,
+                "csrf_token": new_csrf_token,
+                "csrf_token_expiry": csrf_token_expiry.isoformat()
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class EmailVerifyView(APIView):
     """Email Verify View."""
     permission_classes = [AllowAny]
@@ -2187,20 +2243,22 @@ class SocialAuthView(APIView):
                 if not user.is_active:
                     return Response({"error": "Account is deactivated. Contact your admin."}, status=400)
                 # Generate session for user
-                login(request, user)
+                login(request, user, backend='django.contrib.auth.backends.ModelBackend')
                 
                 sessionid = request.session.session_key
                 csrf_token = get_token(request)
                 # Substracting a minute so that frontend request doesn't give token expired error
                 csrf_token_expiry = datetime.now(timezone.utc) + timedelta(days=1) - timedelta(minutes=1)
+                session_expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
                 user_role = get_user_role(user)
-                
+
                 return Response({
                     "sessionid": sessionid,
+                    "session_expiry": session_expiry.isoformat(),        
                     "user_id": user.id,
                     "user_role": user_role, 
                     "csrf_token": csrf_token,
-                    "csrf_token_expiry": csrf_token_expiry.isoformat()           
+                    "csrf_token_expiry": csrf_token_expiry.isoformat()
                 }, status=status.HTTP_200_OK)
             else:
                 return Response({"error": "Authentication failed, user not found."}, status=400)

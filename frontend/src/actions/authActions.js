@@ -85,7 +85,8 @@ export async function verifyOtpAction(formData) {
     console.log(response);
 
     if (
-      response.user_id && response.user_role && response.sessionid &&
+      response.user_id && response.user_role && 
+      response.sessionid && response.session_expiry &&
       response.csrf_token && response.csrf_token_expiry
     ) {
         await setSessionCookie(response);
@@ -125,7 +126,8 @@ export async function socialLoginAction(provider, accessToken) {
     };
     const response = await socialOauth(auth_data)
     if (
-      response.user_id && response.user_role && response.sessionid &&
+      response.user_id && response.user_role && 
+      response.sessionid && response.session_expiry &&
       response.csrf_token && response.csrf_token_expiry
     ) {
       await setSessionCookie(response);

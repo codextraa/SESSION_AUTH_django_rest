@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import {
-  getSessionIdFromSession,
+  getSessionExpiryFromSession,
   getCSRFTokenExpiryFromSession,
   setCSRFCookie,
-  getCSRFTokenFromSession
+  updateSessionCookie
 } from "@/libs/cookie";
 import {
   BASE_ROUTE,
@@ -32,9 +32,15 @@ export async function middleware(req) {
     return undefined; // Allow access to API routes
   };
 
-  const isLoggedIn = await getSessionIdFromSession();
-  const csrftoken_token = await getCSRFTokenFromSession();
-  console.log(csrftoken_token);
+  let isLoggedIn = await getSessionExpiryFromSession();
+  let updatedCookie;
+
+  if (!isLoggedIn) {
+    updatedCookie = await updateSessionCookie(req);
+    if (updatedCookie) {
+      isLoggedIn = true;
+    };
+  };
 
   const csrfToken = await getCSRFTokenExpiryFromSession();
   if (!csrfToken) {
@@ -66,8 +72,24 @@ export async function middleware(req) {
     return NextResponse.redirect(new URL(`${BASE_ROUTE}/auth/login`, req.url)); // Redirect to login page
   };
 
+  const res = NextResponse.next();
+
+  if (updatedCookie) {
+    // Set the updated session cookie in the response
+    // cookieStore takes time to set the cookie and update the client side
+    // therefore it is not available right at the moment the next request is called
+    // this is for the next response so that it gets the updated cookie value
+    res.cookies.set(updatedCookie.name, updatedCookie.value, {
+      httpOnly: updatedCookie.httpOnly,
+      secure: updatedCookie.secure,
+      maxAge: updatedCookie.maxAge,
+      path: updatedCookie.path,
+      sameSite: updatedCookie.sameSite,
+    });
+  };
+
   // If everything is fine, allow the request to continue
-  return NextResponse.next();
+  return res;
 }
 
 export const config = {

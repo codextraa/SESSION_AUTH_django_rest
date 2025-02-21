@@ -25,6 +25,10 @@ export const getSession = async (data) => {
   return apiClient.post('/session/', data);
 };
 
+export const refreshSession = async () => {
+  return apiClient.post('/session/refresh/', {});
+}
+
 export const resendOtp = async (data) => {
   return apiClient.post('/resend-otp/', data);
 };
