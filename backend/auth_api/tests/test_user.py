@@ -21,6 +21,7 @@ RECAPTCHA_VERIFY_URL = reverse('recaptcha-verify')
 LOGIN_URL = reverse('login')
 RESEND_OTP_URL = reverse('resend-otp')
 SESSION_URL = reverse('session')
+REFRESH_SESSION_URL = reverse('session-refresh')
 VERIFY_EMAIL_URL = reverse('email-verify')
 VERIFY_PHONE_URL = reverse('phone-verify')
 RESET_PASSWORD_URL = reverse('password-reset')
@@ -754,6 +755,50 @@ class SessionViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
         self.assertIn('error', response.data)
         self.assertIn("Simulated Internal Server Error", response.data['error'])
+        
+class RefreshSessionViewTests(APITestCase):
+    def setUp(self):
+        self.client = self.client
+        self.url = REFRESH_SESSION_URL
+        self.user = create_user(
+            email='testuser@example.com', 
+            password='Django@123'
+        )
+        self.client.login(
+            email='testuser@example.com', 
+            password='Django@123'
+        )
+
+    @patch('auth_api.views.get_user_role', return_value='Admin')
+    def test_refresh_session_authenticated(self, mock_get_user_role):
+        original_session_key = self.client.session.session_key
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        expected_fields = [
+            'sessionid', 'session_expiry', 'user_id', 'user_role',
+            'csrf_token', 'csrf_token_expiry'
+        ]
+        for field in expected_fields:
+            self.assertIn(field, response.data)
+        self.assertEqual(response.data['user_id'], self.user.id)
+        self.assertEqual(response.data['user_role'], 'Admin')
+        self.assertNotEqual(response.data['sessionid'], original_session_key)
+        with self.assertRaises(Session.DoesNotExist):
+            Session.objects.get(session_key=original_session_key)
+        new_session_key = self.client.session.session_key
+        self.assertEqual(response.data['sessionid'], new_session_key)
+        self.assertEqual(str(self.user.id), self.client.session['_auth_user_id'])
+
+    def test_refresh_session_unauthenticated(self):
+        self.client.logout()
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    @patch('auth_api.views.get_token', side_effect=Exception("Simulated token error"))
+    def test_refresh_session_internal_server_error(self, mock_get_token):
+        response = self.client.post(self.url)
+        self.assertEqual(response.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+        self.assertEqual(response.data['error'], 'Simulated token error')
         
 class EmailVerifyViewTests(APITestCase):
     def setUp(self):
