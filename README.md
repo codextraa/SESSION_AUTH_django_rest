@@ -39,7 +39,7 @@ To set up the project locally, follow these steps:
    Create `.env` files in the `backend` and `frontend` directories.
    These env files contain sensitive information and should not be committed to version control. They must exist before running the setup script.
    
-   See the env variable names in the [env-vars.md](link-to-env-vars) file.
+   See the env variable names in the [env-vars.md](https://github.com/wasee-sun/SESSION_AUTH_django_rest/blob/main/env-vars.md) file.
 
 ### Backend (Django) Setup
 
@@ -133,4 +133,4 @@ Contributions are welcome! Please follow these steps:
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](link-to-license) file for details.
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/wasee-sun/SESSION_AUTH_django_rest/blob/main/LICENSE) file for details.
