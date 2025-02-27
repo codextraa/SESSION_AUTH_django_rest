@@ -1,4 +1,4 @@
-export const BASE_ROUTE = '/session'
+export const BASE_ROUTE = '/session-django-rest'
 export const DEFAULT_LOGIN_REDIRECT = `${BASE_ROUTE}`;
 
 export const authRoute = `${BASE_ROUTE}/auth`;

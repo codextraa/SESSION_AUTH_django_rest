@@ -12,7 +12,7 @@ HTTPS=Boolean
 
 ENVIRONMENT="Development" or "Production"
 
-FRONTEND_BASE_ROUTE="/jwt" (must be this unless frontend won't work)
+FRONTEND_BASE_ROUTE="/session-django-rest" (must be this unless frontend won't work)
 
 DATABASE_ENGINE="django.db.backends.postgresql"
 
