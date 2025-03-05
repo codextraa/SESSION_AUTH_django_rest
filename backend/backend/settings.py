@@ -172,7 +172,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://127.0.0.1:6379/1',  # Redis URL for your Redis server
+        'LOCATION': 'redis://127.0.0.1:6379/2',  # Redis URL for your Redis server
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         },
@@ -319,7 +319,10 @@ if TESTING:
     MEDIA_URL = '/media/test_media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, '..', 'media', 'test_media')
 else:
-    MEDIA_URL = 'https://localhost/media/'
+    if HTTPS == "True":
+        MEDIA_URL = 'https://localhost/media/'
+    else:
+        MEDIA_URL = '/media/'
     MEDIA_ROOT = os.path.join(BASE_DIR, '..', 'media')
     
 DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5MB
