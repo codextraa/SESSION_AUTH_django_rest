@@ -1,0 +1,76 @@
+{
+    "editor.formatOnSave": true,
+    
+    // Python/Black configuration
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 4,
+        "editor.insertSpaces": true,
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        }
+    },
+    "black-formatter.args": [
+        "--line-length", "88",
+        "--target-version", "py38"
+    ],
+    "python.analysis.extraPaths": ["${workspaceFolder}/backend"],
+    
+    // Pylint for Django
+    "pylint.args": [
+        "--load-plugins=pylint_django",
+        "--django-settings-module=backend.settings",
+        "--disable=missing-docstring",
+        "--disable=invalid-name",
+        "--disable=too-many-ancestors",
+        "--disable=no-member",
+        "--disable=too-few-public-methods"
+    ],
+    
+    // JavaScript/Prettier configuration
+    "prettier.semi": true,
+    "prettier.singleQuote": true,
+    "prettier.tabWidth": 2,
+    "prettier.trailingComma": "es5",
+    
+    "[javascript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[javascriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[typescript]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[typescriptreact]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    "[css]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true,
+        "editor.tabSize": 2,
+        "editor.insertSpaces": true
+    },
+    
+    // ESLint configuration
+    "eslint.workingDirectories": ["./frontend"],
+    "eslint.validate": [
+        "javascript",
+        "javascriptreact",
+        "typescript",
+        "typescriptreact"
+    ]
+}
