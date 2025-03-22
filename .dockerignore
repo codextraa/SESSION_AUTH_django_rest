@@ -1,0 +1,48 @@
+# Python artifacts
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Node.js artifacts
+node_modules
+.next
+dist/
+build/
+
+# Git and version control
+.git
+.gitignore
+
+# Infisical secrets
+infisical*
+.infisical*
+
+# Logs and temp files
+*.log
+*.pid
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Docker Compose and docs (optional)
+docker-compose.yaml
+.dockerignore
+*.md
