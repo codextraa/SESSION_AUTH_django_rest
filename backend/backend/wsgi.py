@@ -7,18 +7,23 @@ For more information on this file, see
 https://docs.djangoproject.com/en/5.1/howto/deployment/wsgi/
 """
 
-import os, threading, time
+import os
+import threading
+import time
 from django.core.wsgi import get_wsgi_application
-from django.utils.timezone import now
-from django.contrib.sessions.models import Session
-from django.core.cache import cache
-from django.contrib.sessions.backends.db import SessionStore
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 
 application = get_wsgi_application()
 
+# pylint: disable=C0413
+from django.utils.timezone import now
+from django.contrib.sessions.models import Session
+from django.core.cache import cache
+
 stop_event = threading.Event()  # Allows graceful stopping of thread
+
 
 def cleanup_sessions():
     """Thread function to clean up expired sessions from database and cache."""
@@ -30,7 +35,7 @@ def cleanup_sessions():
 
             for session in expired_sessions:
                 session_key = session.session_key
-                
+
                 # Construct the correct cache key
                 cache_key = f"django.contrib.sessions.cached_db{session_key}"
                 cache.delete(cache_key)  # Delete session from cache
@@ -39,11 +44,12 @@ def cleanup_sessions():
 
             print(f"Deleted {count} expired session(s)")
 
-        except Exception as e:
+        except Exception as e:  # pylint: disable=W0718
             print(f"Session cleanup error: {e}")
 
-        # Wait for 1 hour before running again
-        time.sleep(3600)
+        # Wait for 6 hour before running again
+        time.sleep(21600)
+
 
 # Start background thread
 thread = threading.Thread(target=cleanup_sessions, daemon=True)

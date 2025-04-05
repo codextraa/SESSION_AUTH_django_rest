@@ -160,6 +160,3 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
-#Django static folder
-static
