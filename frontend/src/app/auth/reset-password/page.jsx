@@ -1,7 +1,7 @@
-import Link from 'next/link';
-import { verifyResetLinkAction } from '@/actions/passwordActions';
-import PasswordResetForm from '@/components/Forms/PasswordResetForm';
-import styles from './page.module.css';
+import Link from "next/link";
+import { verifyResetLinkAction } from "@/actions/passwordActions";
+import PasswordResetForm from "@/components/Forms/PasswordResetForm";
+import styles from "./page.module.css";
 
 export default async function PasswordResetPage({ searchParams }) {
   const params = await searchParams;

@@ -46,7 +46,7 @@ export const setSessionCookie = async (data) => {
 
     return cookieStore.get('__Secure-session');
   } catch (error) {
-    console.error('Error setting cookie:', error);
+    // console.error("Error setting cookie:", error);
     throw new Error('Failed to set session cookie.');
   }
 };
@@ -72,7 +72,7 @@ export const setCSRFCookie = async () => {
       sameSite: 'lax', // Helps prevent CSRF attacks
     });
   } catch (error) {
-    console.error('Error setting csrftoken:', error);
+    // console.error("Error setting csrftoken:", error);
     throw new Error('Failed to set CSRFToken');
   }
 };
@@ -146,7 +146,7 @@ export const getCSRFTokenFromSession = async () => {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
     return decryptedData?.csrf_token || null; // Return user_id if present
   } catch (error) {
-    console.error('Error decrypting session data:', error);
+    // console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
@@ -167,23 +167,23 @@ export const getCSRFTokenExpiryFromSession = async () => {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (decryptedData && decryptedData.csrf_token_expiry) {
-      // Check if access_token_expiry is present
+      // Check if session_expiry is present
       const expiryDate = new Date(decryptedData.csrf_token_expiry);
       const currentDate = new Date();
 
       // Compare the expiry date with the current date
       if (currentDate > expiryDate) {
-        console.warn('CSRF has expired');
+        // console.warn("CSRF has expired");
         return false;
       } else {
-        console.warn('CSRF is still valid');
+        // console.warn("CSRF is still valid");
         return true;
       }
     }
 
-    return false; // Return access_token_expiry if present
+    return false; // Return session_expiry if present
   } catch (error) {
-    console.error('Error decrypting session data:', error);
+    // console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
@@ -204,7 +204,7 @@ export const getUserIdFromSession = async () => {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
     return decryptedData?.user_id || null; // Return user_id if present
   } catch (error) {
-    console.error('Error decrypting session data:', error);
+    // console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
@@ -225,7 +225,7 @@ export const getUserRoleFromSession = async () => {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
     return decryptedData?.user_role || null; // Return user_role if present
   } catch (error) {
-    console.error('Error decrypting session data:', error);
+    // console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
@@ -245,7 +245,7 @@ export const getSessionIdFromSession = async () => {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
     return decryptedData?.sessionid || null; // Return sessionid if present
   } catch (error) {
-    console.error('Error decrypting session data:', error);
+    // console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
@@ -266,23 +266,23 @@ export const getSessionExpiryFromSession = async () => {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (decryptedData && decryptedData.session_expiry) {
-      // Check if access_token_expiry is present
+      // Check if session_expiry is present
       const expiryDate = new Date(decryptedData.session_expiry);
       const currentDate = new Date();
 
       // Compare the expiry date with the current date
       if (currentDate > expiryDate) {
-        console.warn('Session has expired');
+        // console.warn('Session has expired');
         return false;
       } else {
-        console.warn('Session is still valid');
+        // console.warn('Session is still valid');
         return true;
       }
     }
 
-    return false; // Return access_token_expiry if present
+    return false; // Return session_expiry if present
   } catch (error) {
-    console.error('Error decrypting session data:', error);
+    // console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
   }
 };

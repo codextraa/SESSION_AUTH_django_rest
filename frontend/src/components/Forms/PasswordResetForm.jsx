@@ -1,26 +1,26 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { resetPasswordAction } from '@/actions/passwordActions';
-import styles from './PasswordResetForm.module.css';
-import { PasswordResetButton } from '../Buttons/Button';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { resetPasswordAction } from "@/actions/passwordActions";
+import styles from "./PasswordResetForm.module.css";
+import { PasswordResetButton } from "../Buttons/Button";
 
 export default function PasswordResetForm({ token, expiry }) {
   const router = useRouter();
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const handleSubmit = async (formData) => {
-    formData.append('token', token);
-    formData.append('expiry', expiry);
+    formData.append("token", token);
+    formData.append("expiry", expiry);
     const result = await resetPasswordAction(formData);
     if (result.error) {
       setError(result.error);
-      setSuccess('');
+      setSuccess("");
     } else if (result.success) {
       setSuccess(result.success);
-      setError('');
+      setError("");
       router.push(`/auth/login`);
     }
   };

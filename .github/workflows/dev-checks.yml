@@ -1,0 +1,117 @@
+name: Dev Environment Checks
+
+on:
+  push:
+    branches:
+      - dev-branch
+
+jobs:
+  lint-frontend:
+    name: Lint Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './frontend/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check linting with ESLint
+        run: |
+          npx eslint . --ext .js,.mjs,.jsx,.ts,.tsx
+
+      - name: Check code formatting with Prettier
+        run: |
+          npx prettier --check "**/*.{js,mjs,jsx,ts,tsx,css,json}"
+
+  lint-and-test-backend:
+    name: Lint and Test Backend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout session-djrest repository
+        uses: actions/checkout@v4
+
+      - name: Checkout Postgres repository
+        uses: actions/checkout@v4
+        with:
+          repository: codextraa/postgres-db
+          token: ${{ secrets.POSTGRES_REPO_PAT }}
+          path: postgres-db
+
+      - name: Create token file for session-djrest
+        run: echo "${{ secrets.INFISICAL_TOKEN_DEV }}" > infisical_token.txt
+
+      - name: Create Infisical config for session-djrest
+        run: |
+          echo "${{ secrets.INFISICAL_JSON_DEV }}" | base64 -d > .infisical.json
+
+      - name: Create token file for Postgres
+        run: echo "${{ secrets.INFISICAL_TOKEN_POSTGRES_DEV }}" > postgres-db/infisical_token.txt
+
+      - name: Create Infisical config for Postgres
+        working-directory: ./postgres-db
+        run: |
+          echo "${{ secrets.INFISICAL_JSON_POSTGRES_DEV }}" | base64 -d > .infisical.json
+
+      - name: Create network
+        run: docker network create web-app-network || true
+
+      - name: Start Postgres service
+        working-directory: ./postgres-db
+        run: docker compose up -d --build
+
+      - name: Wait for Postgres to be healthy
+        run: |
+          timeout 120s bash -c 'until [ "$(docker inspect --format="{{.State.Health.Status}}" postgres-db)" = "healthy" ]; do echo "Waiting for Postgres to be healthy..."; sleep 5; done' || { echo "Postgres failed to become healthy within 2 minutes"; exit 1; }
+
+      - name: Start backend and Redis services
+        run: docker compose up -d --build session-djrest-backend session-djrest-redis
+
+      - name: Install linting dependencies
+        run: |
+          docker exec session-djrest-backend sh -c "pip install black==25.1.0 pylint==3.3.4 pylint-django"
+
+      - name: Run backend tests
+        run: |
+          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && python manage.py test'"
+
+      - name: Show logs if tests fail
+        if: failure()
+        run: docker logs session-djrest-backend
+
+      - name: Check linting with Pylint
+        run: |
+          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && pylint backend auth_api core_db'"
+
+      - name: Check code formatting with Black
+        run: |
+          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && black --check .'"
+
+      - name: Stop session-djrest containers
+        if: always()
+        run: docker compose down -v
+
+      - name: Stop Postgres containers
+        if: always()
+        working-directory: ./postgres-db
+        run: docker compose down -v
+
+      - name: Remove network
+        if: always()
+        run: docker network rm web-app-network || true
+
+      - name: Remove token files
+        if: always()
+        run: |
+          rm infisical_token.txt || true
+          rm postgres-db/infisical_token.txt || true

@@ -1,14 +1,14 @@
-'use server';
+"use server";
 
 import {
   requestPasswordReset,
   verifyPassResetLink,
   resetPassword,
-} from '@/libs/api';
+} from "@/libs/api";
 
 // Can be improved
 export const passwordError = async (response) => {
-  if (typeof response.error === 'object') {
+  if (typeof response.error === "object") {
     // Initialize an array to store error messages
     const errorMessages = [];
 
@@ -34,7 +34,7 @@ export const passwordError = async (response) => {
     }
 
     // Combine messages into a single string with \n between each
-    return errorMessages.join(' ');
+    return errorMessages.join(" ");
   }
 
   // If it's not a dictionary, return the error as is (string or other type)
@@ -43,7 +43,7 @@ export const passwordError = async (response) => {
 
 export async function requestPasswordResetAction(formData) {
   const data = {
-    email: formData.get('email'),
+    email: formData.get("email"),
   };
 
   try {
@@ -53,10 +53,10 @@ export async function requestPasswordResetAction(formData) {
       return { error: response.error };
     }
 
-    return { success: 'Password reset link sent to your email.' };
+    return { success: "Password reset link sent to your email." };
   } catch (error) {
     console.error(error);
-    return { error: error.message || 'Failed to send password reset link.' };
+    return { error: error.message || "Failed to send password reset link." };
   }
 }
 
@@ -71,16 +71,16 @@ export async function verifyResetLinkAction(token, expiry) {
     return { success: true };
   } catch (error) {
     console.error(error);
-    return { error: error.message || 'Invalid or expired reset link.' };
+    return { error: error.message || "Invalid or expired reset link." };
   }
 }
 
 export async function resetPasswordAction(formData) {
-  const token = formData.get('token');
-  const expiry = formData.get('expiry');
+  const token = formData.get("token");
+  const expiry = formData.get("expiry");
   const data = {
-    password: formData.get('password'),
-    c_password: formData.get('c_password'),
+    password: formData.get("password"),
+    c_password: formData.get("c_password"),
   };
 
   try {
@@ -91,9 +91,9 @@ export async function resetPasswordAction(formData) {
       return { error: error };
     }
 
-    return { success: 'Password reset successfully.' };
+    return { success: "Password reset successfully." };
   } catch (error) {
     console.error(error);
-    return { error: error.message || 'Failed to reset password.' };
+    return { error: error.message || "Failed to reset password." };
   }
 }

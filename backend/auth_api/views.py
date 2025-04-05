@@ -739,7 +739,7 @@ class SessionView(APIView):
         },
     )
     @method_decorator(csrf_protect)
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):  # pylint: disable=R0914
         """Post a request to TokenView. Verifies OTP and generates JWT tokens."""
         try:
             user_id = request.data.pop("user_id", None)
@@ -2738,7 +2738,7 @@ class SocialAuthView(APIView):
             ),
         },
     )
-    def post(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):  # pylint: disable=R0911
         token = request.data.get("token")
         provider = request.data.get("provider")
         if not token or not provider:
@@ -2786,10 +2786,9 @@ class SocialAuthView(APIView):
                     },
                     status=status.HTTP_200_OK,
                 )
-            else:
-                return Response(
-                    {"error": "Authentication failed, user not found."}, status=400
-                )
+            return Response(
+                {"error": "Authentication failed, user not found."}, status=400
+            )
         except AuthException as e:
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR

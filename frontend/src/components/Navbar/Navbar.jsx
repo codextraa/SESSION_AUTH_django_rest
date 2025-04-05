@@ -1,9 +1,9 @@
-'use client';
-import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { getUserIdAction, getUserRoleAction } from '@/actions/authActions';
-import { LogOutButton } from '../Buttons/Button';
-import styles from './Navbar.module.css';
+"use client";
+import Link from "next/link";
+import { useState, useEffect } from "react";
+import { getUserIdAction, getUserRoleAction } from "@/actions/authActions";
+import { LogOutButton } from "../Buttons/Button";
+import styles from "./Navbar.module.css";
 
 export default function Navbar() {
   const [userId, setUserId] = useState(null);
@@ -41,7 +41,7 @@ export default function Navbar() {
             Profile
           </Link>
         )}
-        {(userRole === 'Admin' || userRole === 'Superuser') && (
+        {(userRole === "Admin" || userRole === "Superuser") && (
           <Link href={`/admin-dashboard`} className={styles.link}>
             Dashboard
           </Link>

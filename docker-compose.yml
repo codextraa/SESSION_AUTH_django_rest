@@ -1,0 +1,77 @@
+# name: session-djrest
+
+secrets:
+  infisical_token:
+    file: ./infisical_token.txt
+  .infisical.json:
+    file: ./.infisical.json
+
+services:
+  session-djrest-backend:
+    container_name: session-djrest-backend
+    build: ./backend
+    image: session-djrest-backend:Python-3.12-alpine-P
+    restart: unless-stopped
+    ports:
+      - "8002:8000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: /app/run.sh
+    volumes:
+      - backend-static:/app/static
+    depends_on:
+      session-djrest-redis:
+        condition: service_healthy
+    networks:
+      - web-app-network
+    cpus: '1'
+    mem_limit: 1g
+
+  session-djrest-frontend:
+    container_name: session-djrest-frontend
+    build: ./frontend
+    image: session-djrest-frontend:Node-20-alpine-P
+    restart: unless-stopped
+    ports:
+      - "3002:3000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: /app/run.sh
+    # extra_hosts:
+    #   - "session-djrest.dev:host-gateway"
+    networks:
+      - web-app-network
+    cpus: '0.5'
+    mem_limit: 512m
+
+  session-djrest-redis:
+    build: ./redis
+    container_name: session-djrest-redis
+    image: session-djrest-redis:Redis-7.4.2-alpine-P
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - web-app-network
+    cpus: '0.3'
+    mem_limit: 256m
+
+volumes:
+  backend-static:
+    driver: local
+  redis-data:
+    driver: local
+
+networks:
+  web-app-network:
+    external: true

@@ -1,11 +1,10 @@
-import '@/styles/globals.css';
-import Navbar from '@/components/Navbar/Navbar';
-
+import "@/styles/globals.css";
+import Navbar from "@/components/Navbar/Navbar";
 
 export const metadata = {
-  title: 'SESSION Auth',
-  description: 'SESSION Auth',
-}
+  title: "SESSION Auth",
+  description: "SESSION Auth",
+};
 
 export default function RootLayout({ children }) {
   return (
@@ -14,4 +13,4 @@ export default function RootLayout({ children }) {
       {children}
     </>
   );
-};
+}

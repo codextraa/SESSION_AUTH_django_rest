@@ -1,0 +1,48 @@
+name: Production Check
+
+on:
+  pull_request:
+    branches:
+      - stage-prod-branch
+      - main
+
+jobs:
+  check-allowed-merge-files:
+    name: Check Allowed Merge Files
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensures full history for comparison
+
+      - name: Validate changed files
+        run: |
+          CHANGED_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..HEAD)
+          echo "Changed Files:"
+          echo "$CHANGED_FILES"
+
+          ALLOWED_PATHS=(
+            "backend/backend/"
+            "backend/backend_api/"
+            "backend/core_db/"
+            "backend/static/"
+            "frontend/src/"
+          )
+
+          for file in $CHANGED_FILES; do
+            ALLOWED=false
+            for path in "${ALLOWED_PATHS[@]}"; do
+              if [[ "$file" == "$path"* ]]; then
+                ALLOWED=true
+                break
+              fi
+            done
+            if [ "$ALLOWED" = false ]; then
+              echo "::error:: ❌ File $file is not allowed to be merged into prod-branch."
+              exit 1
+            fi
+          done
+
+      - name: ✅ All files are valid
+        run: echo "All changed files are allowed!"

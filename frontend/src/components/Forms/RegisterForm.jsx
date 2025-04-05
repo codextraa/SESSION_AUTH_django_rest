@@ -1,19 +1,19 @@
-'use client';
-import { useState, useEffect } from 'react';
-import { createUserAction } from '@/actions/userActions';
-import { getUserRoleAction } from '@/actions/authActions';
-import { recaptchaVerifyAction } from '@/actions/authActions';
-import { RegisterButton } from '../Buttons/Button';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import styles from './RegisterForm.module.css';
+"use client";
+import { useState, useEffect } from "react";
+import { createUserAction } from "@/actions/userActions";
+import { getUserRoleAction } from "@/actions/authActions";
+import { recaptchaVerifyAction } from "@/actions/authActions";
+import { RegisterButton } from "../Buttons/Button";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import styles from "./RegisterForm.module.css";
 
 export default function RegisterForm() {
   const router = useRouter();
   const [userRole, setUserRole] = useState(null);
   const [error, setError] = useState(null);
   const [errors, setErrors] = useState(null);
-  const [sitekey, setSitekey] = useState('');
+  const [sitekey, setSitekey] = useState("");
   const [isRecaptchaVerified, setIsRecaptchaVerified] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -21,7 +21,7 @@ export default function RegisterForm() {
     // Dynamically load reCAPTCHA script
     const fetchUserRole = async () => {
       const role = await getUserRoleAction();
-      if (role === 'Superuser') {
+      if (role === "Superuser") {
         setUserRole(role);
       }
     };
@@ -33,17 +33,17 @@ export default function RegisterForm() {
     const fetchSiteKey = async () => {
       setIsLoading(true);
       try {
-        const response = await fetch('/api/recaptcha-key');
+        const response = await fetch("/api/recaptcha-key");
         const data = await response.json();
         if (data.sitekey) {
           setSitekey(data.sitekey);
           loadRecaptchaScript();
         } else {
-          setError('Failed to load reCAPTCHA. Please refresh the page.');
+          setError("Failed to load reCAPTCHA. Please refresh the page.");
         }
       } catch (error) {
-        console.error('Failed to fetch reCAPTCHA sitekey:', error);
-        setError('Failed to load reCAPTCHA. Please refresh the page.');
+        console.error("Failed to fetch reCAPTCHA sitekey:", error);
+        setError("Failed to load reCAPTCHA. Please refresh the page.");
       } finally {
         setIsLoading(false);
       }
@@ -54,13 +54,13 @@ export default function RegisterForm() {
 
   const loadRecaptchaScript = () => {
     // Dynamically load reCAPTCHA script
-    const script = document.createElement('script');
-    script.src = 'https://www.google.com/recaptcha/api.js';
+    const script = document.createElement("script");
+    script.src = "https://www.google.com/recaptcha/api.js";
     script.async = true;
     script.defer = true;
     script.onerror = () => {
-      console.error('Failed to load reCAPTCHA script');
-      setError('Failed to load reCAPTCHA. Please refresh the page.');
+      console.error("Failed to load reCAPTCHA script");
+      setError("Failed to load reCAPTCHA. Please refresh the page.");
     };
 
     document.body.appendChild(script);
@@ -80,15 +80,15 @@ export default function RegisterForm() {
 
   const handleSubmit = async (formData) => {
     /* eslint-disable no-undef */
-    if (typeof grecaptcha === 'undefined') {
-      setError('reCAPTCHA not loaded. Please refresh the page.');
+    if (typeof grecaptcha === "undefined") {
+      setError("reCAPTCHA not loaded. Please refresh the page.");
       return;
     }
 
     const recaptchaResponse = grecaptcha.getResponse();
 
     if (!recaptchaResponse) {
-      setErrors({ error: 'Please verify you are not a robot.' });
+      setErrors({ error: "Please verify you are not a robot." });
       return;
     }
 
@@ -100,13 +100,13 @@ export default function RegisterForm() {
     }
 
     let result;
-    if (userRole === 'Superuser') {
-      result = await createUserAction(formData, 'admin');
+    if (userRole === "Superuser") {
+      result = await createUserAction(formData, "admin");
     } else {
       result = await createUserAction(formData);
     }
 
-    if (typeof grecaptcha !== 'undefined') {
+    if (typeof grecaptcha !== "undefined") {
       grecaptcha.reset();
     }
     setIsRecaptchaVerified(false);
@@ -114,7 +114,7 @@ export default function RegisterForm() {
     if (result.error) {
       setErrors(result.error);
     } else if (result.success) {
-      if (userRole === 'Superuser') {
+      if (userRole === "Superuser") {
         router.push(`/admin-dashboard/new-admin/success`);
       } else {
         router.push(`/auth/register/success`);
@@ -242,7 +242,7 @@ export default function RegisterForm() {
         </div>
       )}
       <RegisterButton disabled={!isRecaptchaVerified} />
-      {userRole === 'Superuser' ? (
+      {userRole === "Superuser" ? (
         <Link href={`/admin-dashboard`} className={styles.link}>
           Back to Admin Page
         </Link>

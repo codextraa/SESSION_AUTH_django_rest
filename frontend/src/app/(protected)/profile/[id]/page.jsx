@@ -1,5 +1,5 @@
-import UpdatePage from '@/components/Forms/UpdateForm';
-import styles from './page.module.css';
+import UpdatePage from "@/components/Forms/UpdateForm";
+import styles from "./page.module.css";
 
 export default function ProfilePage({ params }) {
   return (
