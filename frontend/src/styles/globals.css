@@ -1,5 +1,5 @@
 :root {
-  --navy-blue: #151B2B;
+  --navy-blue: #151b2b;
   --gray: #666666;
 }
 
@@ -10,7 +10,13 @@
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    Roboto,
+    sans-serif;
   line-height: 1.5;
 }
 

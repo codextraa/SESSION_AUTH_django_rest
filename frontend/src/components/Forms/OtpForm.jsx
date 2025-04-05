@@ -1,12 +1,9 @@
 'use client';
-import Link from "next/link";
-import { BASE_ROUTE, DEFAULT_LOGIN_REDIRECT } from '@/route';
+import Link from 'next/link';
+import { DEFAULT_LOGIN_REDIRECT } from '@/route';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  verifyOtpAction, 
-  resendOtpAction,
-} from '@/actions/authActions';
+import { verifyOtpAction, resendOtpAction } from '@/actions/authActions';
 import {
   requestPhoneVerificationAction,
   verifyPhoneAction,
@@ -30,7 +27,7 @@ export default function OtpForm({ action }) {
     const otpExpiry = sessionStorage.getItem('otpExpiry');
 
     if (!otpRequired || Date.now() > parseInt(otpExpiry, 10)) {
-      router.push(`${BASE_ROUTE}/auth/login`);
+      router.push(`/auth/login`);
     }
 
     // Start the timer when the component is mounted
@@ -58,21 +55,21 @@ export default function OtpForm({ action }) {
     if (formAction === 'register') {
       try {
         const session_user_id = sessionStorage.getItem('user_id');
-  
+
         if (!session_user_id) {
           setError('Session expired. Please login again');
           sessionStorage.clear();
-          router.push(`${BASE_ROUTE}/auth/login`);
+          router.push(`/auth/login`);
           return;
         }
-  
+
         const userId = await decrypt(session_user_id);
         formData.append('user_id', userId);
       } catch (error) {
         console.error('Error decrypting user_id:', error);
         setError('Something went wrong, could not send OTP. Try again');
         return;
-      };
+      }
       const result = await verifyOtpAction(formData);
       if (result.error) {
         setError(result.error);
@@ -82,7 +79,7 @@ export default function OtpForm({ action }) {
         setError('');
         sessionStorage.clear();
         router.push(`${DEFAULT_LOGIN_REDIRECT}`);
-      };
+      }
     } else if (formAction === 'phone-verify') {
       try {
         const result = await verifyPhoneAction(formData);
@@ -93,11 +90,11 @@ export default function OtpForm({ action }) {
           setSuccessMessage(result.success);
           setError('');
           sessionStorage.clear();
-          router.push(`${BASE_ROUTE}`);
-        };
+          router.push(`${DEFAULT_LOGIN_REDIRECT}`);
+        }
       } catch (error) {
         console.error('Error decrypting user_id:', error);
-      };
+      }
     } else {
       console.error('Invalid form action:', formAction);
       setError('Something went wrong, Contact Admin');
@@ -109,32 +106,32 @@ export default function OtpForm({ action }) {
     if (formAction === 'register') {
       try {
         const session_user_id = sessionStorage.getItem('user_id');
-  
+
         if (!session_user_id) {
           setError('Session expired. Please login again');
           sessionStorage.clear();
-          router.push(`${BASE_ROUTE}/auth/login`);
+          router.push(`/auth/login`);
           return;
         }
-  
+
         const userId = await decrypt(session_user_id);
         const result = await resendOtpAction(userId);
-  
+
         if (result.error) {
           setError(result.error);
           setSuccessMessage('');
-        };
-  
+        }
+
         if (result.success) {
           setSuccessMessage(result.success);
           setError('');
           sessionStorage.setItem('otpExpiry', Date.now() + 600000);
-        };
+        }
       } catch (error) {
         console.error('Error decrypting user_id:', error);
         setError('Something went wrong, could not send OTP. Try again');
         return;
-      };
+      }
     } else if (formAction === 'phone-verify') {
       const result = await requestPhoneVerificationAction();
       if (result.error) {
@@ -144,12 +141,12 @@ export default function OtpForm({ action }) {
         setSuccessMessage(result.success);
         setError('');
         sessionStorage.setItem('otpExpiry', Date.now() + 600000);
-      };
+      }
     } else {
       console.error('Invalid form action:', formAction);
       setError('Something went wrong, Contact Admin');
       return;
-    };
+    }
 
     setTimer(60);
     setCanResend(false);
@@ -176,21 +173,26 @@ export default function OtpForm({ action }) {
         <input type="text" id="otp" name="otp" required />
       </div>
       <div className={styles.actionLinks}>
-        {formAction === 'register' && 
-        <Link href={`${BASE_ROUTE}/auth/login`} className={styles.backToLogin}>
-          Back to Login
-        </Link>}
-        {formAction === 'phone-verify' && 
-        <Link href={`${BASE_ROUTE}`} className={styles.backToLogin}>
-          Back to HomePage
-        </Link>}
+        {formAction === 'register' && (
+          <Link href={`/auth/login`} className={styles.backToLogin}>
+            Back to Login
+          </Link>
+        )}
+        {formAction === 'phone-verify' && (
+          <Link
+            href={`${DEFAULT_LOGIN_REDIRECT}`}
+            className={styles.backToLogin}
+          >
+            Back to HomePage
+          </Link>
+        )}
       </div>
       <OtpVerifyButton />
       <ResendOtpButton
-      onClick={handleResendOtp}
-      disabled={!canResend}
-      timer={timer}
+        onClick={handleResendOtp}
+        disabled={!canResend}
+        timer={timer}
       />
     </form>
   );
-};
+}

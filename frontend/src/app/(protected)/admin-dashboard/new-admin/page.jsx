@@ -1,5 +1,5 @@
-import RegisterForm from "@/components/Forms/RegisterForm";
-import styles from "@/app/jwt/auth/register/page.module.css";
+import RegisterForm from '@/components/Forms/RegisterForm';
+import styles from '@/app/auth/register/page.module.css';
 
 export default function RegisterPage() {
   return (
@@ -8,4 +8,4 @@ export default function RegisterPage() {
       <RegisterForm />
     </div>
   );
-};
+}
