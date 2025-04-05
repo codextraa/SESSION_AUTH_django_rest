@@ -1,6 +1,6 @@
-import { ApiClient } from './apiClient';
+import { ApiClient } from "./apiClient";
 
-const HTTPS = process.env.HTTPS === 'true';
+const HTTPS = process.env.HTTPS === "true";
 const API_URL = HTTPS
   ? process.env.API_BASE_HTTPS_URL
   : process.env.API_BASE_URL;
@@ -8,27 +8,27 @@ const apiClient = new ApiClient(API_URL);
 
 // API functions
 export const getCSRFToken = async () => {
-  return apiClient.get('/get-csrf-token/');
+  return apiClient.get("/get-csrf-token/");
 };
 
 export const recaptchaVerify = async (data) => {
-  return apiClient.post('/recaptcha-verify/', data);
+  return apiClient.post("/recaptcha-verify/", data);
 };
 
 export const login = async (data) => {
-  return apiClient.post('/login/', data);
+  return apiClient.post("/login/", data);
 };
 
 export const getSession = async (data) => {
-  return apiClient.post('/session/', data);
+  return apiClient.post("/session/", data);
 };
 
 export const refreshSession = async () => {
-  return apiClient.post('/session/refresh/', {});
+  return apiClient.post("/session/refresh/", {});
 };
 
 export const resendOtp = async (data) => {
-  return apiClient.post('/resend-otp/', data);
+  return apiClient.post("/resend-otp/", data);
 };
 
 export const verifyEmail = async (token, expiry) => {
@@ -37,15 +37,15 @@ export const verifyEmail = async (token, expiry) => {
 };
 
 export const requestEmailVerification = async (data) => {
-  return apiClient.post('/verify-email/', data);
+  return apiClient.post("/verify-email/", data);
 };
 
 export const requestPhoneVerification = async (data) => {
-  return apiClient.post('/verify-phone/', data);
+  return apiClient.post("/verify-phone/", data);
 };
 
 export const verifyPhone = async (data) => {
-  return apiClient.patch('/verify-phone/', data);
+  return apiClient.patch("/verify-phone/", data);
 };
 
 export const verifyPassResetLink = async (token, expiry) => {
@@ -54,7 +54,7 @@ export const verifyPassResetLink = async (token, expiry) => {
 };
 
 export const requestPasswordReset = async (data) => {
-  return apiClient.post('/reset-password/', data);
+  return apiClient.post("/reset-password/", data);
 };
 
 export const resetPassword = async (token, expiry, data) => {
@@ -63,11 +63,11 @@ export const resetPassword = async (token, expiry, data) => {
 };
 
 export const logout = async () => {
-  await apiClient.post('/logout/', {});
+  await apiClient.post("/logout/", {});
 };
 
 export const socialOauth = async (data) => {
-  return apiClient.post('/social-auth/', data);
+  return apiClient.post("/social-auth/", data);
 };
 
 export const getUsers = async (queryParams = {}) => {
@@ -80,7 +80,7 @@ export const getUser = async (id) => {
 };
 
 export const createUser = async (data) => {
-  return apiClient.post('/users/', data);
+  return apiClient.post("/users/", data);
 };
 
 export const updateUser = async (id, data) => {

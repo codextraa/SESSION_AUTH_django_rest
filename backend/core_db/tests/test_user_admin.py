@@ -1,4 +1,5 @@
 """Tests for the Django admin modifications"""
+
 from django.test import TestCase, Client
 from django.urls import reverse
 from django.contrib.auth import get_user_model
@@ -16,8 +17,7 @@ class AdminSiteTests(TestCase):
         )
         self.client.force_login(self.admin_user)
         self.user = get_user_model().objects.create_user(
-            email="test@example.com",
-            password="Django@123"
+            email="test@example.com", password="Django@123"
         )
 
     def test_user_list(self):
@@ -34,17 +34,17 @@ class AdminSiteTests(TestCase):
 
         url = reverse("admin:core_db_user_add")
         payload = {
-            'email': 'newuser@example.com',
-            'username': 'newuser@example.com',
-            'slug' : 'newuserexamplecom',
-            'password1': 'Django@123',
-            'password2': 'Django@123',
-            'is_active': True,
-            'is_staff': False,
+            "email": "newuser@example.com",
+            "username": "newuser@example.com",
+            "slug": "newuserexamplecom",
+            "password1": "Django@123",
+            "password2": "Django@123",
+            "is_active": True,
+            "is_staff": False,
         }
         res = self.client.post(url, payload)
 
         self.assertEqual(res.status_code, 302)
-        self.assertTrue(get_user_model().objects.filter(
-            email="newuser@example.com"
-        ).exists())
+        self.assertTrue(
+            get_user_model().objects.filter(email="newuser@example.com").exists()
+        )

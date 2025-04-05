@@ -1,11 +1,11 @@
-import NextAuth from 'next-auth';
-import GoogleProvider from 'next-auth/providers/google';
-import FacebookProvider from 'next-auth/providers/facebook';
-import GitHubProvider from 'next-auth/providers/github';
+import NextAuth from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import FacebookProvider from "next-auth/providers/facebook";
+import GitHubProvider from "next-auth/providers/github";
 // import LinkedInProvider from 'next-auth/providers/linkedin';
 // import TwitterProvider from 'next-auth/providers/twitter';
 // import InstagramProvider from 'next-auth/providers/instagram';
-import { socialLoginAction } from './actions/authActions';
+import { socialLoginAction } from "./actions/authActions";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [
@@ -18,7 +18,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       clientSecret: process.env.FACEBOOK_CLIENT_SECRET,
       authorization: {
         params: {
-          scope: 'email,public_profile', // request email and public profile
+          scope: "email,public_profile", // request email and public profile
         },
       },
     }),
@@ -50,16 +50,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // console.log('email', email);
       // console.log('credentials', credentials);
       let result;
-      if (account.provider === 'google') {
-        result = await socialLoginAction('google-oauth2', account.access_token);
+      if (account.provider === "google") {
+        result = await socialLoginAction("google-oauth2", account.access_token);
       }
 
-      if (account.provider === 'facebook') {
-        result = await socialLoginAction('facebook', account.access_token);
+      if (account.provider === "facebook") {
+        result = await socialLoginAction("facebook", account.access_token);
       }
 
-      if (account.provider === 'github') {
-        result = await socialLoginAction('github', account.access_token);
+      if (account.provider === "github") {
+        result = await socialLoginAction("github", account.access_token);
       }
 
       if (result?.error) {

@@ -1,6 +1,6 @@
-import Link from 'next/link';
-import PasswordResetRequestForm from '@/components/Forms/PasswordResetRequestForm';
-import styles from './page.module.css';
+import Link from "next/link";
+import PasswordResetRequestForm from "@/components/Forms/PasswordResetRequestForm";
+import styles from "./page.module.css";
 
 export default function PasswordResetRequestPage() {
   return (

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import styles from './DeactivateModal.module.css';
+import { useState } from "react";
+import styles from "./DeactivateModal.module.css";
 
 export default function DeactivateModal({ onDeactivate }) {
   const [showModal, setShowModal] = useState(false);

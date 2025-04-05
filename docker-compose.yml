@@ -1,0 +1,99 @@
+name: session-djrest
+
+secrets:
+  infisical_token:
+    file: ./infisical_token.txt
+  .infisical.json:
+    file: ./.infisical.json
+
+services:
+  session-djrest-backend:
+    container_name: session-djrest-backend
+    build: ./backend
+    image: session-djrest-backend:Python-3.12-slim-D
+    ports:
+      - "8002:8000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: /app/run.sh
+    volumes:
+      - backend-static:/app/static
+      - backend-media:/app/media 
+    depends_on:
+      session-djrest-redis:
+        condition: service_healthy
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /app
+          ignore:
+            - ./backend/.gitignore
+            - ./backend/run.sh
+            - ./backend/core_db/migrations
+            - ./backend/backend/*.pyc
+            - ./backend/backend/__pycache__
+            - ./backend/core_db/*.pyc
+            - ./backend/core_db/__pycache__
+            - ./backend/backend_api/*.pyc
+            - ./backend/backend_api/__pycache__
+        - action: rebuild
+          path: ./backend/requirements.txt
+    networks:
+      - web-app-network
+
+  session-djrest-frontend:
+    container_name: session-djrest-frontend
+    build: ./frontend
+    image: session-djrest-frontend:Node-20-alpine-D
+    volumes:
+      - frontend_node_modules:/app/node_modules
+    ports:
+      - "3002:3000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: /app/run.sh
+    extra_hosts:
+      - "session-djrest.dev:host-gateway"
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+          ignore:
+            - ./frontend/node_modules
+            - ./frontend/.next
+            - ./frontend/.gitignore
+            - ./frontend/run.sh
+        - action: rebuild
+          path: ./frontend/package.json
+    networks:
+      - web-app-network
+
+  session-djrest-redis:
+    build: ./redis
+    container_name: session-djrest-redis
+    image: session-djrest-redis:Redis-7.4.2-alpine-D
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - web-app-network
+
+volumes:
+  backend-static:
+  backend-media:
+  frontend_node_modules:
+  redis-data:
+
+networks:
+  web-app-network:
+    external: true

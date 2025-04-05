@@ -8,4 +8,4 @@ export default function EmailVerificationRequestPage() {
       <EmailVerificationRequestForm />
     </div>
   );
-};
+}

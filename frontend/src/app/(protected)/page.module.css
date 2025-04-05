@@ -33,7 +33,9 @@
   color: #0366d6; /* GitHub's brand blue */
   text-decoration: none;
   font-weight: 600;
-  transition: color 0.3s ease, text-decoration 0.3s ease;
+  transition:
+    color 0.3s ease,
+    text-decoration 0.3s ease;
 }
 
 .githubLink:hover {

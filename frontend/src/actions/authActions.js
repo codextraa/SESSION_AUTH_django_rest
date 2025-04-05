@@ -1,4 +1,4 @@
-'use server';
+"use server";
 
 import {
   recaptchaVerify,
@@ -7,15 +7,15 @@ import {
   resendOtp,
   socialOauth,
   logout,
-} from '@/libs/api';
+} from "@/libs/api";
 import {
   getUserIdFromSession,
   getUserRoleFromSession,
   deleteCSRFCookie,
   deleteSessionCookie,
   setSessionCookie,
-} from '@/libs/cookie';
-import { redirect } from 'next/navigation';
+} from "@/libs/cookie";
+import { redirect } from "next/navigation";
 
 export const getUserIdAction = async () => {
   try {
@@ -47,14 +47,14 @@ export async function recaptchaVerifyAction(token) {
     console.error(error);
     return {
       error:
-        error.message || 'An error occurred during reCAPTCHA verification.',
+        error.message || "An error occurred during reCAPTCHA verification.",
     };
   }
 }
 
 export async function loginAction(formData) {
-  const email = formData.get('email');
-  const password = formData.get('password');
+  const email = formData.get("email");
+  const password = formData.get("password");
 
   const credentials = {
     email: email,
@@ -67,13 +67,13 @@ export async function loginAction(formData) {
   } catch (error) {
     // Handle any network or unexpected error
     console.error(error);
-    return { error: error.message || 'An error occurred during login.' };
+    return { error: error.message || "An error occurred during login." };
   }
 }
 
 export async function verifyOtpAction(formData) {
-  const otp_data = formData.get('otp');
-  const user_id = formData.get('user_id');
+  const otp_data = formData.get("otp");
+  const user_id = formData.get("user_id");
 
   const otp = {
     user_id: user_id,
@@ -95,7 +95,7 @@ export async function verifyOtpAction(formData) {
     ) {
       await setSessionCookie(response);
       // Return success response if OTP verification is successful
-      return { success: 'OTP verified successfully' };
+      return { success: "OTP verified successfully" };
     } else {
       // Return error if OTP verification fails
       return response;
@@ -104,7 +104,7 @@ export async function verifyOtpAction(formData) {
     // Handle any network or unexpected error
     console.error(error);
     return {
-      error: error.message || 'An error occurred during OTP verification.',
+      error: error.message || "An error occurred during OTP verification.",
     };
   }
 }
@@ -120,7 +120,7 @@ export async function resendOtpAction(user_id) {
   } catch (error) {
     // Handle any network or unexpected error
     console.error(error);
-    return { error: error.message || 'An error occurred during login.' };
+    return { error: error.message || "An error occurred during login." };
   }
 }
 
@@ -141,13 +141,13 @@ export async function socialLoginAction(provider, accessToken) {
     ) {
       await setSessionCookie(response);
       // Return success response if OTP verification is successful
-      return { success: 'Login successful' };
+      return { success: "Login successful" };
     } else {
-      return { error: response.error || 'Backend authentication failed' };
+      return { error: response.error || "Backend authentication failed" };
     }
   } catch (error) {
     console.error(error);
-    return { error: error.message || 'An error occurred during login.' };
+    return { error: error.message || "An error occurred during login." };
   }
 }
 
@@ -160,7 +160,7 @@ export const logoutAction = async () => {
     await deleteCSRFCookie();
     // Delete the session cookie
     await deleteSessionCookie();
-    redirect('/auth/login');
+    redirect("/auth/login");
   } catch (error) {
     // Throw the NEXT REDIRECT error (otherwise it won't work)
     throw error;

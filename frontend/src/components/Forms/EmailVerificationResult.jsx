@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import styles from './EmailVerificationResult.module.css';
+import Link from "next/link";
+import styles from "./EmailVerificationResult.module.css";
 
 export default function EmailVerificationResult({ result }) {
   return (

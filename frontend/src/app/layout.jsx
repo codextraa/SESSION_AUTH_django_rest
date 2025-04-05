@@ -1,10 +1,9 @@
-import '@/styles/globals.css';
-
+import "@/styles/globals.css";
 
 export const metadata = {
-  title: 'SESSION Auth',
-  description: 'SESSION Auth',
-}
+  title: "SESSION Auth",
+  description: "SESSION Auth",
+};
 
 export default function RootLayout({ children }) {
   return (
@@ -12,4 +11,4 @@ export default function RootLayout({ children }) {
       <body>{children}</body>
     </html>
   );
-};
+}

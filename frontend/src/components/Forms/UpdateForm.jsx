@@ -1,43 +1,43 @@
-'use client';
-import { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+"use client";
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   requestPhoneVerificationAction,
   getUserAction,
   updateUserAction,
   uploadProfileImageAction,
   deactivateUserAction,
-} from '@/actions/userActions';
-import { getUserIdAction, logoutAction } from '@/actions/authActions';
-import { signOut } from 'next-auth/react';
-import ProfileImage from '../Modals/ProfileImageModal';
-import DeactivateModal from '../Modals/DeactivateModal';
+} from "@/actions/userActions";
+import { getUserIdAction, logoutAction } from "@/actions/authActions";
+import { signOut } from "next-auth/react";
+import ProfileImage from "../Modals/ProfileImageModal";
+import DeactivateModal from "../Modals/DeactivateModal";
 import {
   PhoneVerificationRequestButton,
   UpdateButton,
   UploadImageButton,
-} from '../Buttons/Button';
-import styles from './UpdateForm.module.css';
+} from "../Buttons/Button";
+import styles from "./UpdateForm.module.css";
 
 export default function UpdatePage({ params }) {
   const [isDeactivateOpen, setIsDeactivateOpen] = useState(false);
   const [otp, setOtp] = useState(false);
   const [user, setUser] = useState(null);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
-  const [updateErrors, setUpdateErrors] = useState('');
+  const [success, setSuccess] = useState("");
+  const [error, setError] = useState("");
+  const [updateErrors, setUpdateErrors] = useState("");
   const router = useRouter();
 
   useEffect(() => {
     // In developement react's strict mode calls this twice
     fetchUser();
-    const otpRequired = sessionStorage.getItem('otpRequired');
-    const otpExpiry = sessionStorage.getItem('otpExpiry');
+    const otpRequired = sessionStorage.getItem("otpRequired");
+    const otpExpiry = sessionStorage.getItem("otpExpiry");
 
     if (!otpRequired || Date.now() > parseInt(otpExpiry, 10)) {
-      sessionStorage.removeItem('otpRequired');
-      sessionStorage.removeItem('otpExpiry');
+      sessionStorage.removeItem("otpRequired");
+      sessionStorage.removeItem("otpExpiry");
       setOtp(false);
     } else {
       setOtp(true);
@@ -51,29 +51,29 @@ export default function UpdatePage({ params }) {
     const result = await getUserAction(params_obj.id);
     if (result.data) {
       setUser(result.data);
-      setError('');
-      setUpdateErrors('');
+      setError("");
+      setUpdateErrors("");
     } else {
-      setSuccess('');
+      setSuccess("");
       setError(result.error);
-      setUpdateErrors('');
+      setUpdateErrors("");
     }
   };
 
   const handleUpdate = async (formData) => {
     if (
-      (formData.get('username') === user.username ||
-        !formData.get('username')) &&
-      (formData.get('first_name') === user.first_name ||
-        (!formData.get('first_name') && !user.first_name)) &&
-      (formData.get('last_name') === user.last_name ||
-        (!formData.get('last_name') && !user.last_name)) &&
-      (formData.get('phone_number') === user.phone_number ||
-        (!formData.get('phone_number') && !user.phone_number))
+      (formData.get("username") === user.username ||
+        !formData.get("username")) &&
+      (formData.get("first_name") === user.first_name ||
+        (!formData.get("first_name") && !user.first_name)) &&
+      (formData.get("last_name") === user.last_name ||
+        (!formData.get("last_name") && !user.last_name)) &&
+      (formData.get("phone_number") === user.phone_number ||
+        (!formData.get("phone_number") && !user.phone_number))
     ) {
-      setSuccess('');
-      setError('No changes found.');
-      setUpdateErrors('');
+      setSuccess("");
+      setError("No changes found.");
+      setUpdateErrors("");
       return;
     }
 
@@ -82,11 +82,11 @@ export default function UpdatePage({ params }) {
     if (result.success) {
       fetchUser();
       setSuccess(result.success);
-      setError('');
-      setUpdateErrors('');
+      setError("");
+      setUpdateErrors("");
     } else {
-      setSuccess('');
-      setError('');
+      setSuccess("");
+      setError("");
       setUpdateErrors(result.error);
     }
   };
@@ -94,25 +94,25 @@ export default function UpdatePage({ params }) {
   const handleUpload = async (file) => {
     if (file.size > 2 * 1024 * 1024) {
       // 2 MB limit
-      setSuccess('');
-      setError('File size exceeds 2MB. Please upload a smaller image.');
-      setUpdateErrors('');
+      setSuccess("");
+      setError("File size exceeds 2MB. Please upload a smaller image.");
+      setUpdateErrors("");
       return;
     }
 
     const params_obj = await params;
     const formData = new FormData();
-    formData.append('profile_img', file);
+    formData.append("profile_img", file);
     const result = await uploadProfileImageAction(params_obj.id, formData);
     if (result.success) {
       fetchUser();
       setSuccess(result.success);
-      setError('');
-      setUpdateErrors('');
+      setError("");
+      setUpdateErrors("");
     } else {
-      setSuccess('');
+      setSuccess("");
       setError(result.error);
-      setUpdateErrors('');
+      setUpdateErrors("");
     }
   };
 
@@ -121,20 +121,20 @@ export default function UpdatePage({ params }) {
 
     if (result.error) {
       setError(result.error);
-      setUpdateErrors('');
-      setSuccess('');
+      setUpdateErrors("");
+      setSuccess("");
     } else if (result.success) {
       setOtp(true);
       setSuccess(result.success);
-      setError('');
-      setUpdateErrors('');
-      sessionStorage.setItem('otpRequired', 'true');
-      sessionStorage.setItem('otpExpiry', Date.now() + 600000); // 10 minutes
+      setError("");
+      setUpdateErrors("");
+      sessionStorage.setItem("otpRequired", "true");
+      sessionStorage.setItem("otpExpiry", Date.now() + 600000); // 10 minutes
       router.push(`/profile/phone-verify`);
     } else {
-      setError('Something went wrong, could not send OTP. Try again');
-      setSuccess('');
-      setUpdateErrors('');
+      setError("Something went wrong, could not send OTP. Try again");
+      setSuccess("");
+      setUpdateErrors("");
     }
   };
 
@@ -143,15 +143,15 @@ export default function UpdatePage({ params }) {
     const result = await deactivateUserAction(params_obj.id);
     if (result.success) {
       setSuccess(result.success);
-      setError('');
-      setUpdateErrors('');
+      setError("");
+      setUpdateErrors("");
       await logoutAction(); // DRF rejects request because is_active is false
       await signOut();
       router.push(`/auth/login`);
     } else {
-      setSuccess('');
+      setSuccess("");
       setError(result.error);
-      setUpdateErrors('');
+      setUpdateErrors("");
     }
   };
 
@@ -221,7 +221,7 @@ export default function UpdatePage({ params }) {
         <div className={styles.formGroup}>
           <label htmlFor="phone_number">
             Phone Number
-            {user.is_phone_verified ? ' (Verified)' : ' (Not Verified)'}
+            {user.is_phone_verified ? " (Verified)" : " (Not Verified)"}
           </label>
           <input
             type="tel"

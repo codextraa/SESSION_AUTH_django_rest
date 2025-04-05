@@ -1,5 +1,5 @@
-import Link from 'next/link';
-import styles from '@/app/auth/register/success/page.module.css';
+import Link from "next/link";
+import styles from "@/app/auth/register/success/page.module.css";
 
 export default function RegisterSuccessPage() {
   return (

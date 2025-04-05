@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import styles from "./SearchBar.module.css";
 
-
 export default function SearchBar({ onSearch, currentSearch }) {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -29,4 +28,4 @@ export default function SearchBar({ onSearch, currentSearch }) {
       </button>
     </form>
   );
-};
+}
