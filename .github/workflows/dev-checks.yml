@@ -83,7 +83,7 @@ jobs:
 
       - name: Run backend tests
         run: |
-          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/session-django-rest/backend' -- sh -c 'cd /app && python manage.py test'"
+          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && python manage.py test'"
 
       - name: Show logs if tests fail
         if: failure()
@@ -91,11 +91,11 @@ jobs:
 
       - name: Check linting with Pylint
         run: |
-          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/session-django-rest/backend' -- sh -c 'cd /app && pylint backend auth_api core_db'"
+          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && pylint backend auth_api core_db'"
 
       - name: Check code formatting with Black
         run: |
-          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/session-django-rest/backend' -- sh -c 'cd /app && black --check .'"
+          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && black --check .'"
 
       - name: Stop session-djrest containers
         if: always()
