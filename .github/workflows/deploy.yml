@@ -1,0 +1,150 @@
+name: Deploy Session-djrest in AWS EC2 instance
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - closed # Trigger only when PR is closed (merged)
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Only run if the PR was merged
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Set up a temporary directory
+            TEMP_DIR=$(mktemp -d /home/ubuntu/tmp.XXXXXX)
+            cd "$TEMP_DIR"
+
+            # Clone the repository
+            git clone https://github.com/codextraa/SESSION_AUTH_django_rest.git .
+
+            # Write secrets to files
+            echo "${{ secrets.INFISICAL_TOKEN_PROD }}" > infisical_token.txt
+            echo "${{ secrets.INFISICAL_JSON_PROD }}" | base64 -d > .infisical.json
+            chmod 600 infisical_token.txt .infisical.json
+
+            # Ensure network exists
+            docker network ls | grep -q web-app-network || docker network create web-app-network
+
+            # Stop nginx if it exists
+            if docker ps -a --format '{{.Names}}' | grep -q "^nginx$"; then
+              echo "Stopping and removing nginx container"
+              docker stop nginx || true
+              docker rm nginx || true
+            fi
+
+            # Check and remove existing app containers if they exist
+            for container in session-djrest-frontend session-djrest-backend session-djrest-redis; do
+              if docker ps -a --format '{{.Names}}' | grep -q "^${container}$"; then
+                echo "Stopping and removing container: $container"
+                docker stop "$container" || true
+                docker rm "$container" || true
+              fi
+            done
+
+            # Check and remove existing volumes if they exist
+            for volume in session-djrest_backend-static session-djrest_redis-data; do
+              if docker volume ls --format '{{.Name}}' | grep -q "^${volume}$"; then
+                echo "Removing volume: $volume"
+                docker volume rm "$volume" || true
+              fi
+            done
+
+            # # Build the Docker image
+            docker-compose -p session-djrest build
+
+            # Run the app containers
+            docker-compose -p session-djrest up -d
+
+            # Wait for session-djrest-redis to be ready
+            echo "Waiting for Redis to be ready..."
+            timeout 60s bash -c "until docker exec session-djrest-redis redis-cli ping | grep -q 'PONG'; do echo 'Redis not ready yet...'; sleep 5s; done" || { 
+              echo "Redis failed to start"; 
+              docker logs session-djrest-redis; 
+              docker stop session-djrest-redis || true; 
+              docker rm session-djrest-redis || true; 
+              exit 1; 
+            }
+            echo "Redis is ready!"
+
+            # Wait for session-djrest-frontend to be ready
+            echo "Waiting for Frontend to be ready..."
+            timeout 60s bash -c "until curl -s -f http://localhost:3000/ > /dev/null; do echo 'Frontend not ready yet...'; sleep 5s; done" || { 
+              echo "Frontend failed to start"; 
+              docker logs session-djrest-frontend; 
+              docker stop session-djrest-frontend || true; 
+              docker rm session-djrest-frontend || true; 
+              exit 1; 
+            }
+            echo "Frontend is ready!"
+
+            # Wait for session-djrest-backend to be ready
+            echo "Waiting for Backend to be ready..."
+            timeout 60s bash -c "until nc -z localhost 8000; do echo 'Backend not ready yet...'; sleep 5s; done" || { 
+              echo "Backend failed to start"; 
+              docker logs session-djrest-backend; 
+              docker stop session-djrest-backend || true; 
+              docker rm session-djrest-backend || true; 
+              exit 1; 
+            }
+            echo "Backend is ready!"
+
+            # Create the nginx repo inside $TEMP_DIR
+            NGINX_DIR="$TEMP_DIR/nginx"
+            mkdir -p "$NGINX_DIR"
+
+            # Change into the nginx repo
+            cd "$NGINX_DIR"
+
+            # Clone the nginx private repository using PAT
+            git clone https://${{ secrets.NGINX_EC2_PAT }}@github.com/codextraa/nginx-proxy.git .
+
+            # Create Certs directory
+            mkdir -p Certs
+
+            # Copy SSL certificates
+            echo "${{ secrets.EC2_SUDO_PASSWORD }}" | sudo -S cp -r /etc/ssl_certs/* Certs/ || { 
+              echo "Failed to copy SSL certificates from /etc/ssl_certs"; 
+              exit 1;
+            }
+
+            # Change ownership of Certs directory to ubuntu user
+            echo "${{ secrets.EC2_SUDO_PASSWORD }}" | sudo -S chown -R ubuntu:ubuntu Certs/ || { 
+              echo "Failed to change ownership of Certs directory"; 
+              exit 1; 
+            }
+
+            # Run the container
+            docker-compose -p nginx up -d
+
+            # Wait for nginx to be ready
+            echo "Waiting for Nginx to be ready..."
+            timeout 60s bash -c "until curl -s -f http://localhost:80/ > /dev/null; do echo 'Nginx not ready yet...'; sleep 5s; done" || { 
+              echo "Nginx failed to start"; 
+              docker logs nginx; 
+              docker stop nginx || true; 
+              exit 1; 
+            }
+            echo "Nginx is ready!"
+
+            # Explicitly remove Certs directory and specific SSL files
+            rm -f Certs/cloudfare.crt Certs/cloudfare.key
+            rm -rf Certs
+
+            # Remove the nginx repo
+            rm -rf "$NGINX_DIR"
+
+            # Cleanup
+            cd /home/ubuntu
+            rm -f "$TEMP_DIR/infisical_token.txt"
+            rm -f "$TEMP_DIR/.infisical.json"
+            rm -rf "$TEMP_DIR"
