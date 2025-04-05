@@ -1,34 +1,43 @@
 const ALGORITHM = 'AES-GCM';
-const SECRET_KEY = typeof window !== 'undefined' ? 
-      process.env.NEXT_PUBLIC_AUTH_SECRET_KEY : process.env.AUTH_SECRET_KEY;
+let SECRET_KEY;
+
+const get_secret_key = async () => {
+  if (typeof window !== 'undefined') {
+    const response = await fetch('/api/auth-secret-key');
+    const data = await response.json();
+    SECRET_KEY = data.auth_secret_key;
+  } else {
+    SECRET_KEY = process.env.AUTH_SECRET_KEY;
+  }
+};
 
 export function validateSessionData(data) {
   // Check that the data is an object
   if (typeof data !== 'object' || data === null) {
     return null;
-  };
+  }
 
   // Validate user_id (should be a non-empty string or number)
   if (typeof data.user_id !== 'string' && typeof data.user_id !== 'number') {
     return null;
-  };
+  }
   data.user_id = String(data.user_id).trim(); // Convert to string and remove extra spaces
 
   // Validate user_role (should be a non-empty string)
   if (typeof data.user_role !== 'string' || data.user_role.trim() === '') {
     return null;
-  };
+  }
   data.user_role = data.user_role.trim();
 
   // Validate the session(should be a non-empty string)
   if (typeof data.sessionid !== 'string') {
     return null;
-  };
+  }
   data.sessionid = String(data.sessionid).trim();
 
-  if (typeof data.session_expiry !== 'string'){
+  if (typeof data.session_expiry !== 'string') {
     return null;
-  };
+  }
   data.session_expiry = String(data.session_expiry).trim();
 
   // Return sanitized and valid data
@@ -36,33 +45,33 @@ export function validateSessionData(data) {
     user_id: data.user_id,
     user_role: data.user_role,
     sessionid: data.sessionid,
-    session_expiry: data.session_expiry
+    session_expiry: data.session_expiry,
   };
-};
+}
 
 export function validateCSRFTokenData(data) {
   // Check that the data is an object
   if (typeof data !== 'object' || data === null) {
     return null;
-  };
+  }
 
   // Validate CSRFToken (should be a string)
   if (typeof data.csrf_token !== 'string') {
     return null;
-  };
+  }
   data.csrf_token = String(data.csrf_token).trim();
 
-  if (typeof data.csrf_token_expiry !== 'string'){
+  if (typeof data.csrf_token_expiry !== 'string') {
     return null;
-  };
+  }
   data.csrf_token_expiry = String(data.csrf_token_expiry).trim();
 
   // Return sanitized and valid data
   return {
     csrf_token: data.csrf_token,
-    csrf_token_expiry: data.csrf_token_expiry
+    csrf_token_expiry: data.csrf_token_expiry,
   };
-};
+}
 
 /**
  * Encrypts the session data using Web Crypto API
@@ -70,8 +79,13 @@ export function validateCSRFTokenData(data) {
  * @returns {Promise<string>} - Encrypted data in base64 format
  */
 export async function encrypt(data) {
-  if (!SECRET_KEY || SECRET_KEY.length !== 64) {
-    throw new Error('Invalid SECRET_KEY. Ensure it is a 64-character hex string.');
+  if (!SECRET_KEY) {
+    await get_secret_key();
+    if (!SECRET_KEY || SECRET_KEY.length !== 64) {
+      throw new Error(
+        'Invalid SECRET_KEY. Ensure it is a 64-character hex string.'
+      );
+    }
   }
 
   // Convert SECRET_KEY to ArrayBuffer
@@ -100,11 +114,14 @@ export async function encrypt(data) {
   );
 
   // Combine IV and encrypted data
-  const encryptedData = Buffer.concat([Buffer.from(iv), Buffer.from(encryptedBuffer)]);
+  const encryptedData = Buffer.concat([
+    Buffer.from(iv),
+    Buffer.from(encryptedBuffer),
+  ]);
 
   // Return as base64 string
   return encryptedData.toString('base64');
-};
+}
 
 /**
  * Decrypts the encrypted session data using Web Crypto API
@@ -112,8 +129,13 @@ export async function encrypt(data) {
  * @returns {Promise<Object>} - The decrypted session data
  */
 export async function decrypt(encryptedData) {
-  if (!SECRET_KEY || SECRET_KEY.length !== 64) {
-    throw new Error('Invalid SECRET_KEY. Ensure it is a 64-character hex string.');
+  if (!SECRET_KEY) {
+    await get_secret_key();
+    if (!SECRET_KEY || SECRET_KEY.length !== 64) {
+      throw new Error(
+        'Invalid SECRET_KEY. Ensure it is a 64-character hex string.'
+      );
+    }
   }
 
   // Convert SECRET_KEY to ArrayBuffer
@@ -147,4 +169,4 @@ export async function decrypt(encryptedData) {
 
   // Parse JSON and return
   return JSON.parse(decryptedText);
-};
+}

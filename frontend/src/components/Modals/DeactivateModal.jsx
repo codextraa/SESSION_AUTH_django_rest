@@ -1,19 +1,19 @@
-"use client"
+'use client';
 
-import { useState } from "react"
-import styles from "./DeactivateModal.module.css"
+import { useState } from 'react';
+import styles from './DeactivateModal.module.css';
 
 export default function DeactivateModal({ onDeactivate }) {
-  const [showModal, setShowModal] = useState(false)
+  const [showModal, setShowModal] = useState(false);
 
   const handleDeactivate = () => {
-    setShowModal(true)
-  }
+    setShowModal(true);
+  };
 
   const confirmDeactivate = () => {
-    onDeactivate()
-    setShowModal(false)
-  }
+    onDeactivate();
+    setShowModal(false);
+  };
 
   return (
     <div>
@@ -27,12 +27,15 @@ export default function DeactivateModal({ onDeactivate }) {
             <button onClick={confirmDeactivate} className={styles.yesButton}>
               Yes
             </button>
-            <button onClick={() => setShowModal(false)} className={styles.noButton}>
+            <button
+              onClick={() => setShowModal(false)}
+              className={styles.noButton}
+            >
               No
             </button>
           </div>
         </div>
       )}
     </div>
-  )
+  );
 }

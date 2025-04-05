@@ -1,23 +1,21 @@
-import { NextResponse } from "next/server";
+import { NextResponse } from 'next/server';
 import {
-  getSessionExpiryFromSession,
+  getAccessTokenExpiryFromSession,
+  updateSessionCookie,
   getCSRFTokenExpiryFromSession,
   setCSRFCookie,
-  updateSessionCookie
-} from "@/libs/cookie";
+} from '@/libs/cookie';
 import {
-  BASE_ROUTE,
   DEFAULT_LOGIN_REDIRECT,
   publicRoutes,
   apiRoute,
   authRoute,
-} from "./route";
-
+} from './route';
 
 export async function middleware(req) {
-  console.warn("Middleware triggered");
+  console.warn('Middleware triggered');
   const { pathname } = req.nextUrl;
-  
+
   const isPublicRoute = publicRoutes.includes(pathname);
   const isApiRoute = pathname.startsWith(apiRoute);
   const isAuthRoute = pathname.startsWith(authRoute);
@@ -25,24 +23,24 @@ export async function middleware(req) {
   if (isPublicRoute) {
     console.warn('Handling public route');
     return NextResponse.next(); // Allow access to public routes
-  };
+  }
 
   if (isApiRoute) {
     console.warn('Handling API route');
     return undefined; // Allow access to API routes
-  };
+  }
 
-  let isLoggedIn = await getSessionExpiryFromSession();
+  let isLoggedIn = await getAccessTokenExpiryFromSession();
   let updatedCookie;
 
   if (!isLoggedIn) {
     updatedCookie = await updateSessionCookie(req);
     if (updatedCookie) {
       isLoggedIn = true;
-    };
-  };
+    }
+  }
 
-  const csrfToken = await getCSRFTokenExpiryFromSession();
+  let csrfToken = await getCSRFTokenExpiryFromSession();
   if (!csrfToken) {
     await setCSRFCookie();
   }
@@ -59,18 +57,18 @@ export async function middleware(req) {
       return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url)); // Redirect to homepage or dashboard
     }
     return NextResponse.next(); // Allow access to login/register if not logged in
-  };
+  }
 
   // Redirect unauthenticated users from protected routes to the login page
   if (!isLoggedIn) {
-    console.warn(`User is not logged in, redirecting to ${BASE_ROUTE}/auth/login`);
+    console.warn(`User is not logged in, redirecting to /auth/login`);
     // Prevent redirect loop if already at the login page
-    if (pathname === `${BASE_ROUTE}/auth/login`) {
-      console.warn(`Skipping middleware for ${BASE_ROUTE}/auth/login`);
+    if (pathname === '/auth/login') {
+      console.warn('Skipping middleware for /auth/login');
       return NextResponse.next();
     }
-    return NextResponse.redirect(new URL(`${BASE_ROUTE}/auth/login`, req.url)); // Redirect to login page
-  };
+    return NextResponse.redirect(new URL('/auth/login', req.url)); // Redirect to login page
+  }
 
   const res = NextResponse.next();
 
@@ -86,7 +84,7 @@ export async function middleware(req) {
       path: updatedCookie.path,
       sameSite: updatedCookie.sameSite,
     });
-  };
+  }
 
   // If everything is fine, allow the request to continue
   return res;

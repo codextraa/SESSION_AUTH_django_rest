@@ -1,0 +1,18 @@
+# Enforce LF for shell scripts
+*.sh text eol=lf
+
+# Enforce LF for Python files
+*.py text eol=lf
+
+# Enforce LF for JSON files
+*.json text eol=lf
+
+# Enforce LF for JavaScript module files (Next.js config)
+*.mjs text eol=lf
+
+# Treat virtual env as binary (no conversion)
+venv/* -text
+
+# Optional: Ignore line endings for non-critical files
+*.md text
+*.log text

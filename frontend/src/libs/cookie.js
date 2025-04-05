@@ -1,12 +1,11 @@
 import { cookies } from 'next/headers';
-import { 
+import {
   encrypt,
   decrypt,
   validateSessionData,
-  validateCSRFTokenData
+  validateCSRFTokenData,
 } from './session';
 import { getCSRFToken, refreshSession } from './api';
-import { BASE_ROUTE } from '@/route';
 
 export const setSessionCookie = async (data) => {
   try {
@@ -16,14 +15,14 @@ export const setSessionCookie = async (data) => {
 
     if (!validsessionData) {
       throw new Error('Invalid session data.');
-    };
+    }
 
     if (!validcsrftoken) {
       throw new Error('Invalid CSRFToken');
-    };
+    }
 
     // Encrypt the session data
-    const encryptedCSRFToken = await encrypt(validcsrftoken)
+    const encryptedCSRFToken = await encrypt(validcsrftoken);
     const encryptedSessionData = await encrypt(validsessionData);
 
     // Create a secure cookie
@@ -33,7 +32,7 @@ export const setSessionCookie = async (data) => {
       httpOnly: true,
       secure: process.env.HTTPS === 'true', // Secure in production
       maxAge: 60 * 60 * 24, // One day in seconds
-      path: BASE_ROUTE, // Dynamic path
+      path: '/', // Dynamic path
       sameSite: 'lax', // Helps prevent CSRF attacks
     });
 
@@ -41,7 +40,7 @@ export const setSessionCookie = async (data) => {
       httpOnly: true,
       secure: process.env.HTTPS === 'true', // Secure in production
       maxAge: 60 * 60 * 24, // One day in seconds
-      path: BASE_ROUTE, // Dynamic path
+      path: '/', // Dynamic path
       sameSite: 'lax', // Helps prevent CSRF attacks
     });
 
@@ -49,32 +48,32 @@ export const setSessionCookie = async (data) => {
   } catch (error) {
     console.error('Error setting cookie:', error);
     throw new Error('Failed to set session cookie.');
-  };
+  }
 };
 
 export const setCSRFCookie = async () => {
   try {
     const csrf_token_data = await getCSRFToken();
-  
+
     const validcsrftoken = validateCSRFTokenData(csrf_token_data);
-  
+
     if (!validcsrftoken) {
       throw new Error('Invalid CSRFToken');
-    };
-  
+    }
+
     const encryptedSessionData = await encrypt(validcsrftoken);
-  
+
     const cookieStore = await cookies();
     cookieStore.set('__Secure-csrftoken', encryptedSessionData, {
       httpOnly: true,
       secure: process.env.HTTPS === 'true', // Secure in production
       maxAge: 60 * 60 * 24, // One day in seconds
-      path: BASE_ROUTE, // Dynamic path
+      path: '/', // Dynamic path
       sameSite: 'lax', // Helps prevent CSRF attacks
     });
-  } catch(error) {
+  } catch (error) {
     console.error('Error setting csrftoken:', error);
-    throw new Error('Failed to set CSRFToken')
+    throw new Error('Failed to set CSRFToken');
   }
 };
 
@@ -83,21 +82,24 @@ export const updateSessionCookie = async (req) => {
 
   if (!session) {
     return false;
-  };
+  }
 
   const response = await refreshSession();
 
   if (
-    response.user_id && response.user_role && 
-    response.sessionid && response.session_expiry &&
-    response.csrf_token && response.csrf_token_expiry
+    response.user_id &&
+    response.user_role &&
+    response.sessionid &&
+    response.session_expiry &&
+    response.csrf_token &&
+    response.csrf_token_expiry
   ) {
     return await setSessionCookie(response);
   } else {
     await deleteSessionCookie();
     await deleteCSRFCookie();
     return false;
-  };
+  }
 };
 
 export const deleteSessionCookie = async () => {
@@ -108,10 +110,10 @@ export const deleteSessionCookie = async () => {
       httpOnly: true,
       secure: process.env.HTTPS === 'true', // Secure in production
       maxAge: 0, // Expire the cookie immediately
-      path: BASE_ROUTE, // Ensure the cookie is deleted for all paths
+      path: '/', // Ensure the cookie is deleted for all paths
       sameSite: 'lax',
     });
-  };
+  }
 };
 
 export const deleteCSRFCookie = async () => {
@@ -122,10 +124,10 @@ export const deleteCSRFCookie = async () => {
       httpOnly: true,
       secure: process.env.HTTPS === 'true', // Secure in production
       maxAge: 0, // Expire the cookie immediately
-      path: BASE_ROUTE, // Ensure the cookie is deleted for all paths
+      path: '/', // Ensure the cookie is deleted for all paths
       sameSite: 'lax',
-    })
-  };
+    });
+  }
 };
 
 export const getCSRFTokenFromSession = async () => {
@@ -134,11 +136,11 @@ export const getCSRFTokenFromSession = async () => {
 
   if (!sessionCookie) {
     return null; // No session cookie found
-  };
+  }
 
   if (!sessionCookie.value) {
     return null; // No session cookie value found
-  };
+  }
 
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
@@ -146,7 +148,7 @@ export const getCSRFTokenFromSession = async () => {
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
-  };
+  }
 };
 
 export const getCSRFTokenExpiryFromSession = async () => {
@@ -155,34 +157,35 @@ export const getCSRFTokenExpiryFromSession = async () => {
 
   if (!sessionCookie) {
     return null; // No session cookie found
-  };
+  }
 
   if (!sessionCookie.value) {
     return null; // No session cookie value found
-  };
+  }
 
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
 
-    if (decryptedData && decryptedData.csrf_token_expiry) { // Check if access_token_expiry is present
+    if (decryptedData && decryptedData.csrf_token_expiry) {
+      // Check if access_token_expiry is present
       const expiryDate = new Date(decryptedData.csrf_token_expiry);
       const currentDate = new Date();
 
       // Compare the expiry date with the current date
       if (currentDate > expiryDate) {
-        console.warn("CSRF has expired");
+        console.warn('CSRF has expired');
         return false;
       } else {
-        console.warn("CSRF is still valid");
+        console.warn('CSRF is still valid');
         return true;
-      };
-    };
+      }
+    }
 
     return false; // Return access_token_expiry if present
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
-  };
+  }
 };
 
 export const getUserIdFromSession = async () => {
@@ -191,11 +194,11 @@ export const getUserIdFromSession = async () => {
 
   if (!sessionCookie) {
     return null; // No session cookie found
-  };
+  }
 
   if (!sessionCookie.value) {
     return null; // No session cookie value found
-  };
+  }
 
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
@@ -203,7 +206,7 @@ export const getUserIdFromSession = async () => {
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
-  };
+  }
 };
 
 export const getUserRoleFromSession = async () => {
@@ -212,11 +215,11 @@ export const getUserRoleFromSession = async () => {
 
   if (!sessionCookie) {
     return null; // No session cookie found
-  };
+  }
 
   if (!sessionCookie.value) {
     return null; // No session cookie value found
-  };
+  }
 
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
@@ -224,19 +227,19 @@ export const getUserRoleFromSession = async () => {
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
-  };
+  }
 };
 
-export const getSessionIdFromSession = async () =>  {
+export const getSessionIdFromSession = async () => {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get('__Secure-session'); // Retrieve the session cookie
   if (!sessionCookie) {
     return null; // No session cookie found
-  };
+  }
 
   if (!sessionCookie.value) {
     return null; // No session cookie value found
-  };
+  }
 
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
@@ -244,7 +247,7 @@ export const getSessionIdFromSession = async () =>  {
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
-  };
+  }
 };
 
 export const getSessionExpiryFromSession = async () => {
@@ -253,32 +256,33 @@ export const getSessionExpiryFromSession = async () => {
 
   if (!sessionCookie) {
     return null; // No session cookie found
-  };
+  }
 
   if (!sessionCookie.value) {
     return null; // No session cookie value found
-  };
+  }
 
   try {
     const decryptedData = await decrypt(sessionCookie.value); // Decrypt the session data
 
-    if (decryptedData && decryptedData.session_expiry) { // Check if access_token_expiry is present
+    if (decryptedData && decryptedData.session_expiry) {
+      // Check if access_token_expiry is present
       const expiryDate = new Date(decryptedData.session_expiry);
       const currentDate = new Date();
 
       // Compare the expiry date with the current date
       if (currentDate > expiryDate) {
-        console.warn("Session has expired");
+        console.warn('Session has expired');
         return false;
       } else {
-        console.warn("Session is still valid");
+        console.warn('Session is still valid');
         return true;
-      };
-    };
+      }
+    }
 
     return false; // Return access_token_expiry if present
   } catch (error) {
     console.error('Error decrypting session data:', error);
     return null; // Return null if decryption fails
-  };
+  }
 };

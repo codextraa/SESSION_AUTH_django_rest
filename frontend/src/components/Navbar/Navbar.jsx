@@ -1,28 +1,27 @@
-"use client";
-import Link from "next/link";
-import { useState, useEffect } from "react";
-import { getUserIdAction, getUserRoleAction } from "@/actions/authActions";
-import { LogOutButton } from "../Buttons/Button";
-import styles from "./Navbar.module.css";
-import { BASE_ROUTE } from "@/route";
+'use client';
+import Link from 'next/link';
+import { useState, useEffect } from 'react';
+import { getUserIdAction, getUserRoleAction } from '@/actions/authActions';
+import { LogOutButton } from '../Buttons/Button';
+import styles from './Navbar.module.css';
 
 export default function Navbar() {
   const [userId, setUserId] = useState(null);
   const [userRole, setUserRole] = useState(null);
-  
-  useEffect (() => {
+
+  useEffect(() => {
     const fetchUserId = async () => {
       const userIdRes = await getUserIdAction();
       if (userIdRes) {
         setUserId(userIdRes);
-      };
+      }
     };
 
     const fetchUserRole = async () => {
       const userRoleRes = await getUserRoleAction();
       if (userRoleRes) {
         setUserRole(userRoleRes);
-      };
+      }
     };
 
     fetchUserId();
@@ -32,16 +31,18 @@ export default function Navbar() {
   return (
     <nav className={styles.navbar}>
       <div>
-        <Link href={`${BASE_ROUTE}/`} className={styles.logo}>SESSION-AUTH</Link>
+        <Link href={`/`} className={styles.logo}>
+          JWT-AUTH
+        </Link>
       </div>
       <div className={styles.navLinks}>
         {userId && (
-          <Link href={`${BASE_ROUTE}/profile/${userId}`} className={styles.link}>
+          <Link href={`/profile/${userId}`} className={styles.link}>
             Profile
           </Link>
         )}
-        {(userRole === "Admin" || userRole === "Superuser") && (
-          <Link href={`${BASE_ROUTE}/admin-dashboard`} className={styles.link}>
+        {(userRole === 'Admin' || userRole === 'Superuser') && (
+          <Link href={`/admin-dashboard`} className={styles.link}>
             Dashboard
           </Link>
         )}
@@ -49,18 +50,16 @@ export default function Navbar() {
       <div className={styles.navLinks}>
         {!userRole && (
           <>
-            <Link href={`${BASE_ROUTE}/auth/login`} className={styles.link}>
+            <Link href={`/auth/login`} className={styles.link}>
               Login
             </Link>
-            <Link href={`${BASE_ROUTE}/auth/register`} className={styles.link}>
+            <Link href={`/auth/register`} className={styles.link}>
               Register
             </Link>
           </>
         )}
-        {userRole && (
-          <LogOutButton />
-        )}
+        {userRole && <LogOutButton />}
       </div>
     </nav>
   );
-};
+}

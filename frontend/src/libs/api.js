@@ -1,11 +1,9 @@
-import { ApiClient } from "./apiClient";
-import { 
-  getRefreshTokenFromSession,
-} from "./cookie";
-
+import { ApiClient } from './apiClient';
 
 const HTTPS = process.env.HTTPS === 'true';
-const API_URL = HTTPS? process.env.API_BASE_HTTPS_URL : process.env.API_BASE_URL;
+const API_URL = HTTPS
+  ? process.env.API_BASE_HTTPS_URL
+  : process.env.API_BASE_URL;
 const apiClient = new ApiClient(API_URL);
 
 // API functions
@@ -27,7 +25,7 @@ export const getSession = async (data) => {
 
 export const refreshSession = async () => {
   return apiClient.post('/session/refresh/', {});
-}
+};
 
 export const resendOtp = async (data) => {
   return apiClient.post('/resend-otp/', data);
@@ -39,7 +37,7 @@ export const verifyEmail = async (token, expiry) => {
 };
 
 export const requestEmailVerification = async (data) => {
-  return apiClient.post('/verify-email/', data); 
+  return apiClient.post('/verify-email/', data);
 };
 
 export const requestPhoneVerification = async (data) => {
@@ -73,8 +71,8 @@ export const socialOauth = async (data) => {
 };
 
 export const getUsers = async (queryParams = {}) => {
-  const params = new URLSearchParams(queryParams)
-  return apiClient.get(`/users/?${params.toString()}`)
+  const params = new URLSearchParams(queryParams);
+  return apiClient.get(`/users/?${params.toString()}`);
 };
 
 export const getUser = async (id) => {
