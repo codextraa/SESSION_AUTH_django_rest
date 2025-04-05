@@ -8,3 +8,6 @@ RUN apt-get update && apt-get install -y curl postgresql-client-15 && \
     apt-get install -y infisical && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY . .
+RUN chmod +x run.sh
+
+EXPOSE 8000
