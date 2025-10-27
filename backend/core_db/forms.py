@@ -1,5 +1,6 @@
 """Admin forms."""
 
+import re
 from django.contrib.auth.forms import UserCreationForm
 from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
@@ -34,6 +35,19 @@ class CustomUserCreationForm(UserCreationForm):
 
         if password1 != password2:
             raise ValidationError("Passwords do not match.")
+
+        if (
+            len(password1) < 8
+            or not re.search(r"[a-z]", password1)
+            or not re.search(r"[A-Z]", password1)
+            or not re.search(r"[0-9]", password1)
+            or not re.search(r"[!@#$%^&*(),.?\":{}|<>[\]~/\\']", password1)
+        ):
+            raise ValidationError(
+                "Password must contain at least 8 characters, "
+                "including an uppercase letter, a lowercase letter, "
+                "a number, and a special character."
+            )
 
         if User.objects.filter(email=email).exists():
             raise ValidationError("Email already exists.")
