@@ -160,3 +160,11 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# media folder
+media/**
+
+!media/profile_images/
+
+!media/profile_images/default_profile.jpg
+
