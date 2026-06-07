@@ -9,6 +9,7 @@ from django.core.validators import validate_email
 from phonenumber_field.modelfields import PhoneNumberField
 from server.validators import validate_username_format, validate_password_complexity
 
+
 class UserManager(BaseUserManager):
     """Custom User Manager"""
 
@@ -46,8 +47,8 @@ class UserManager(BaseUserManager):
             raise ValueError("Superuser must have is_superuser=True.")
 
         return self.create_user(email, password, **extra_fields)
-    
-    
+
+
 class User(AbstractBaseUser, PermissionsMixin):
     """Custom User Class"""
 
@@ -69,7 +70,7 @@ class User(AbstractBaseUser, PermissionsMixin):
         unique=True,
         blank=True,
         null=True,
-        validators=[validate_username_format], 
+        validators=[validate_username_format],
     )
 
     first_name = models.CharField(max_length=50, blank=True, null=True)

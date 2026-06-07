@@ -4,7 +4,6 @@ from django.db.models.signals import pre_save, post_save
 from django.contrib.auth.models import Group
 from django.dispatch import receiver
 from django.utils.text import slugify
-from django.utils.timezone import now
 from .models import User
 
 
@@ -14,6 +13,7 @@ def set_user_username(sender, instance, **kwargs):  # pylint: disable=unused-arg
     if not instance.username:
         instance.username = instance.email
 
+
 @receiver(post_save, sender=User)
 def save_user_slug(
     sender, instance, created, **kwargs
@@ -22,6 +22,7 @@ def save_user_slug(
     if created or (slugify(instance.username) != instance.slug):
         instance.slug = slugify(instance.username)
         instance.save()
+
 
 @receiver(post_save, sender=User)
 def set_user_default_group(

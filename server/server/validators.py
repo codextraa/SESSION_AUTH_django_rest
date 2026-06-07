@@ -1,5 +1,4 @@
 import re
-from decimal import Decimal
 from django.core.validators import RegexValidator
 
 validate_username_format = RegexValidator(
@@ -7,6 +6,7 @@ validate_username_format = RegexValidator(
     message="Username cannot contain spaces.",
     code="invalid_username",
 )
+
 
 def validate_password_complexity(password):
     """

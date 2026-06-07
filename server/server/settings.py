@@ -49,7 +49,7 @@ APP_NAME = os.getenv("APP_NAME")
 
 INSTALLED_APPS = [
     "core_db",
-    # "auth_api",
+    "auth_api",
     "corsheaders",
     "rest_framework",
     "social_django",
@@ -298,7 +298,9 @@ SPECTACULAR_SETTINGS = {
     "SERVE_INCLUDE_SCHEMA": False,
     "SECURITY": [
         {
-            "NEXT_API_SECRET_KEY": [],  # Custom API Key
+            "NEXT_API_SECRET_KEY": [],
+            "SessionAuth": [],
+            "CsrfToken": [],
         }
     ],
     # Define the security schemes
@@ -309,6 +311,18 @@ SPECTACULAR_SETTINGS = {
                 "in": "header",
                 "name": "NEXT-X-API-KEY",
                 "description": "NEXT JS Frontend API Key (required alongside JWT)",
+            },
+            "SessionAuth": {
+                "type": "apiKey",
+                "in": "cookie",
+                "name": "sessionid",
+                "description": "Standard Django session cookie authentication.",
+            },
+            "CsrfToken": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-CSRFToken",
+                "description": "Django CSRF token required for state-changing requests.",
             },
         }
     },
