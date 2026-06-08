@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authRoute } from "@/route";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {TextNavLink , ActionNavButton} from "@/components/buttons/button";
+import { TextNavLink, ActionNavButton } from "@/components/buttons/button";
 
 interface NavbarProps {
   initialSession: string | null;
@@ -13,7 +14,7 @@ interface NavbarProps {
 export default function Navbar({ initialSession, initialRole }: NavbarProps) {
   const pathname = usePathname();
   const router = useRouter();
-  
+
   const [session, setSession] = useState<string | null>(initialSession);
   const [role, setRole] = useState<string | null>(initialRole);
 
@@ -22,24 +23,20 @@ export default function Navbar({ initialSession, initialRole }: NavbarProps) {
     setRole(initialRole);
   }, [initialSession, initialRole]);
 
-  //! Route should be /auth called from route.ts
-  const excludedRoutes = ["/auth/login", "/auth/signup"];
-
-  if (excludedRoutes.includes(pathname)) {
+  if (pathname.startsWith(authRoute)) {
     return null;
   }
 
   const handleLogout = async () => {
     // Optional backend api trigger: await fetch('/api/auth/logout', { method: 'POST' });
-    router.refresh(); 
+    router.refresh();
     router.push("/auth/login");
   };
 
   return (
     <nav className="absolute top-[15px] left-1/2 -translate-x-1/2 w-full max-w-[1118px] h-[31px] flex flex-row items-center justify-between px-6 z-[100]">
-      {/* Brand Logo */}
-      <Link 
-        href="/" 
+      <Link
+        href="/"
         className="w-[48px] h-[25px] font-['Merriweather'] font-bold text-[20px] leading-[25px] text-center text-black"
       >
         Auth
@@ -53,7 +50,11 @@ export default function Navbar({ initialSession, initialRole }: NavbarProps) {
           </>
         ) : (
           <>
-            <TextNavLink href="/profile" label="Profile" className="w-[60px] underline" />
+            <TextNavLink
+              href="/profile"
+              label="Profile"
+              className="w-[60px] underline"
+            />
 
             {(role === "admin" || role === "superuser") && (
               <TextNavLink href="/admin/dashboard" label="Dashboard" />

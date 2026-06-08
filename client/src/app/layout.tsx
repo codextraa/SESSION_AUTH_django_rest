@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
-import Navbar from "@/components/navbar/navbar"; 
+import Navbar from "@/components/navbar/navbar";
 import { getSessionCookie, getUserRoleFromSession } from "@/libs/cookie";
 
 export const metadata: Metadata = {
@@ -21,10 +21,8 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className="relative antialiased">
-        <Navbar initialSession={session} initialRole={role} /> 
-        <main className="pt-20">
-          {children}
-        </main>
+        <Navbar initialSession={session} initialRole={role} />
+        <main className="pt-20">{children}</main>
       </body>
     </html>
   );

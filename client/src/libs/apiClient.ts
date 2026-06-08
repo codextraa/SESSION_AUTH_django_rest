@@ -1,5 +1,4 @@
 import { getSessionIdFromSession, getCSRFTokenFromSession } from "./cookie";
-import { ErrorAPIClientResponse } from "@/types/types";
 
 const HTTPS = process.env.HTTPS === "true";
 
@@ -33,7 +32,7 @@ export class ApiClient {
 
   async handleErrors(
     response: Response,
-  ): Promise<JSON | ErrorAPIClientResponse> {
+  ): Promise<unknown> {
     const contentType = response.headers.get("Content-Type") || "";
     // const clonedResponse = response.clone();
 
@@ -101,13 +100,13 @@ export class ApiClient {
     throw new Error("Unexpected error occurred.");
   }
 
-  async request(
+  async request<T>(
     endpoint: string,
     method: string,
     data: object | null = null,
     additionalOptions: RequestInit = {},
     isMultipart: boolean = false,
-  ): Promise<JSON | ErrorAPIClientResponse> {
+  ): Promise<T> {
     await this.throttle(endpoint);
 
     const sessionid = await getSessionIdFromSession();
@@ -151,27 +150,27 @@ export class ApiClient {
 
     try {
       const response = await fetch(url, options);
-      return await this.handleErrors(response);
+      return (await this.handleErrors(response)) as T;
     } catch (error) {
       console.error("Fetch error:", error);
       throw error;
     }
   }
 
-  async get(
+  async get<T>(
     endpoint: string,
     additionalOptions: RequestInit = {},
-  ): Promise<JSON | ErrorAPIClientResponse> {
-    return await this.request(endpoint, "GET", null, additionalOptions);
+  ): Promise<T> {
+    return await this.request<T>(endpoint, "GET", null, additionalOptions);
   }
 
-  async post(
+  async post<T>(
     endpoint: string,
     data: object | null = null,
     additionalOptions: RequestInit = {},
     isMultipart: boolean = false,
-  ): Promise<JSON | ErrorAPIClientResponse> {
-    return await this.request(
+  ): Promise<T> {
+    return await this.request<T>(
       endpoint,
       "POST",
       data,
@@ -180,13 +179,13 @@ export class ApiClient {
     );
   }
 
-  async patch(
+  async patch<T>(
     endpoint: string,
     data: object | null = null,
     additionalOptions: RequestInit = {},
     isMultipart: boolean = false,
-  ): Promise<JSON | ErrorAPIClientResponse> {
-    return await this.request(
+  ): Promise<T> {
+    return await this.request<T>(
       endpoint,
       "PATCH",
       data,
@@ -195,13 +194,13 @@ export class ApiClient {
     );
   }
 
-  async put(
+  async put<T>(
     endpoint: string,
     data: object | null = null,
     additionalOptions: RequestInit = {},
     isMultipart: boolean = false,
-  ): Promise<JSON | ErrorAPIClientResponse> {
-    return await this.request(
+  ): Promise<T> {
+    return await this.request<T>(
       endpoint,
       "PUT",
       data,
@@ -210,11 +209,11 @@ export class ApiClient {
     );
   }
 
-  async delete(
+  async delete<T>(
     endpoint: string,
     data: object | null = null,
     additionalOptions: RequestInit = {},
-  ): Promise<JSON | ErrorAPIClientResponse> {
-    return await this.request(endpoint, "DELETE", data, additionalOptions);
+  ): Promise<T> {
+    return await this.request<T>(endpoint, "DELETE", data, additionalOptions);
   }
 }

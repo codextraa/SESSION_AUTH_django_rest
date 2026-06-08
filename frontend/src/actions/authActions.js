@@ -43,7 +43,6 @@ export async function recaptchaVerifyAction(token) {
   try {
     return await recaptchaVerify(data);
   } catch (error) {
-    // Handle any network or unexpected error
     console.error(error);
     return {
       error:
