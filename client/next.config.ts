@@ -3,7 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   // output: "standalone",
   reactCompiler: true,
-  
+
   allowedDevOrigins: process.env.ALLOWED_DEV_ORIGINS
     ? process.env.ALLOWED_DEV_ORIGINS.split(",")
     : ["localhost"],
@@ -29,7 +29,8 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "codextra-media-065148239936-ap-south-1-an.s3.ap-south-1.amazonaws.com",
+        hostname:
+          "codextra-media-065148239936-ap-south-1-an.s3.ap-south-1.amazonaws.com",
         port: "",
         pathname: "/**",
       },
