@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: ./frontend
+        working-directory: ./client
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,14 +21,14 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: './frontend/package-lock.json'
+          cache-dependency-path: './client/package-lock.json'
 
       - name: Install dependencies
         run: npm ci
 
       - name: Check linting with ESLint
         run: |
-          npx eslint . --ext .js,.mjs,.jsx,.ts,.tsx
+          npx eslint . --max-warnings 0
 
       - name: Check code formatting with Prettier
         run: |
@@ -38,7 +38,7 @@ jobs:
     name: Lint and Test Backend
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout session-djrest repository
+      - name: Checkout Session-djrest repository
         uses: actions/checkout@v4
 
       - name: Checkout Postgres repository
@@ -48,10 +48,10 @@ jobs:
           token: ${{ secrets.POSTGRES_REPO_PAT }}
           path: postgres-db
 
-      - name: Create token file for session-djrest
+      - name: Create token file for Session-djrest
         run: echo "${{ secrets.INFISICAL_TOKEN_DEV }}" > infisical_token.txt
 
-      - name: Create Infisical config for session-djrest
+      - name: Create Infisical config for Session-djrest
         run: |
           echo "${{ secrets.INFISICAL_JSON_DEV }}" | base64 -d > .infisical.json
 
@@ -75,29 +75,26 @@ jobs:
           timeout 120s bash -c 'until [ "$(docker inspect --format="{{.State.Health.Status}}" postgres-db)" = "healthy" ]; do echo "Waiting for Postgres to be healthy..."; sleep 5; done' || { echo "Postgres failed to become healthy within 2 minutes"; exit 1; }
 
       - name: Start backend and Redis services
-        run: docker compose up -d --build session-djrest-backend session-djrest-redis
-
-      - name: Install linting dependencies
-        run: |
-          docker exec session-djrest-backend sh -c "pip install black==25.1.0 pylint==3.3.4 pylint-django"
-
-      - name: Run backend tests
-        run: |
-          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && python manage.py test'"
-
-      - name: Show logs if tests fail
-        if: failure()
-        run: docker logs session-djrest-backend
+        working-directory: ./docker
+        run: docker compose up -d --build session-djrest-server session-djrest-redis
 
       - name: Check linting with Pylint
         run: |
-          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && pylint backend auth_api core_db'"
+          docker exec session-djrest-server sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && pylint server auth_api core_db'"
 
       - name: Check code formatting with Black
         run: |
-          docker exec session-djrest-backend sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && black --check .'"
+          docker exec session-djrest-server sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && black --check .'"
 
-      - name: Stop session-djrest containers
+      - name: Run backend tests
+        run: |
+          docker exec session-djrest-server sh -c "export INFISICAL_TOKEN=\$(cat /run/secrets/infisical_token) && cd /run/secrets && infisical run --path='/Session-django-rest/backend' -- sh -c 'cd /app && python manage.py test'"
+
+      - name: Show logs if tests fail
+        if: failure()
+        run: docker logs session-djrest-server
+
+      - name: Stop Session-djrest containers
         if: always()
         run: docker compose down -v
 

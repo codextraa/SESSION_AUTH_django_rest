@@ -11,7 +11,7 @@ class RestrictDirectApiMiddleware:
         if "test" in sys.argv:
             return self.get_response(request)
 
-        if request.path.startswith("/auth-api/"):
+        if request.path.startswith("/auth-api-old/"):
             api_key = request.headers.get("NEXT-X-API-KEY")
             if api_key != settings.NEXT_API_SECRET_KEY:
                 return HttpResponseForbidden(

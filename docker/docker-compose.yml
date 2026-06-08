@@ -1,0 +1,119 @@
+name: session-djrest
+
+secrets:
+  infisical_token:
+    file: ./infisical_token.txt
+  .infisical.json:
+    file: ./.infisical.json
+
+services:
+  session-djrest-backend:
+    container_name: session-djrest-backend
+    build: 
+      context: ..
+      dockerfile: ./docker/backend/Dockerfile
+    image: session-djrest-backend:Python-3.12-slim-D
+    ports:
+      - "8002:8000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: sh -c 
+    command: ["chmod +x /app/run.sh && /app/run.sh"]
+    volumes:
+      - ../backend:/app
+    depends_on:
+      session-djrest-redis:
+        condition: service_healthy
+    networks:
+      - web-app-network
+
+  session-djrest-server:
+    container_name: session-djrest-server
+    build: 
+      context: ..
+      dockerfile: ./docker/server/Dockerfile
+    image: session-djrest-server:Python-3.12-slim-D
+    ports:
+      - "8003:8000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: sh -c 
+    command: ["chmod +x /app/run.sh && /app/run.sh"]
+    volumes:
+      - ../server:/app
+    depends_on:
+      session-djrest-redis:
+        condition: service_healthy
+    networks:
+      - web-app-network
+
+  session-djrest-frontend:
+    container_name: session-djrest-frontend
+    build: 
+      context: ..
+      dockerfile: ./docker/frontend/Dockerfile
+    image: session-djrest-frontend:Node-22-alpine-D
+    ports:
+      - "3002:3000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: sh -c 
+    command: ["chmod +x /app/run.sh && /app/run.sh"]
+    volumes:
+      - ../frontend:/app
+      - frontend_node_modules:/app/node_modules
+    extra_hosts:
+      - "session-djrest.dev:host-gateway"
+    networks:
+      - web-app-network
+
+  session-djrest-client:
+    container_name: session-djrest-client
+    build: 
+      context: ..
+      dockerfile: ./docker/client/Dockerfile
+    image: session-djrest-client:Node-22-alpine-D
+    ports:
+      - "3003:3000"
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: sh -c 
+    command: ["chmod +x /app/run.sh && /app/run.sh"]
+    volumes:
+      - ../client:/app
+      - client_node_modules:/app/node_modules
+    extra_hosts:
+      - "session-djrest.dev:host-gateway"
+    networks:
+      - web-app-network
+
+  session-djrest-redis:
+    build: 
+      context: ..
+      dockerfile: ./docker/redis/Dockerfile
+    container_name: session-djrest-redis
+    image: session-djrest-redis:Redis-7.4.2-alpine-D
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6381:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - web-app-network
+
+volumes:
+  frontend_node_modules:
+  client_node_modules:
+  redis-data:
+
+networks:
+  web-app-network:
+    external: true

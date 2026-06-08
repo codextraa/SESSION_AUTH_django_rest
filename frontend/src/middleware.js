@@ -63,11 +63,11 @@ export async function middleware(req) {
   if (!isLoggedIn) {
     // console.warn(`User is not logged in, redirecting to /auth/login`);
     // Prevent redirect loop if already at the login page
-    if (pathname === '/auth/login') {
-      // console.warn("Skipping middleware for /auth/login");
+    if (pathname === "/old-home/auth/login") {
+      console.warn("Skipping middleware for /old-home/auth/login");
       return NextResponse.next();
     }
-    return NextResponse.redirect(new URL('/auth/login', req.url)); // Redirect to login page
+    return NextResponse.redirect(new URL("/old-home/auth/login", req.url)); // Redirect to login page
   }
 
   const res = NextResponse.next();

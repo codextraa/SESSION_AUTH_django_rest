@@ -37,12 +37,12 @@ export default function Navbar() {
       </div>
       <div className={styles.navLinks}>
         {userId && (
-          <Link href={`/profile/${userId}`} className={styles.link}>
+          <Link href={`/old-home/profile/${userId}`} className={styles.link}>
             Profile
           </Link>
         )}
         {(userRole === "Admin" || userRole === "Superuser") && (
-          <Link href={`/admin-dashboard`} className={styles.link}>
+          <Link href={`/old-home/admin-dashboard`} className={styles.link}>
             Dashboard
           </Link>
         )}
@@ -50,10 +50,10 @@ export default function Navbar() {
       <div className={styles.navLinks}>
         {!userRole && (
           <>
-            <Link href={`/auth/login`} className={styles.link}>
+            <Link href={`/old-home/auth/login`} className={styles.link}>
               Login
             </Link>
-            <Link href={`/auth/register`} className={styles.link}>
+            <Link href={`/old-home/auth/register`} className={styles.link}>
               Register
             </Link>
           </>
