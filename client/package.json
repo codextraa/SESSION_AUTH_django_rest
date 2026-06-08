@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@edge-runtime/cookies": "^6.0.0",
     "next": "16.2.7",
     "next-auth": "^5.0.0-beta.31",
     "react": "19.2.4",
