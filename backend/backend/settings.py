@@ -106,7 +106,7 @@ PYTHONUNBUFFERED = 1
 DATABASES = {
     "default": {
         "ENGINE": os.getenv("DB_ENGINE"),
-        "NAME": os.getenv("DB_NAME"),
+        "NAME": os.getenv("DB_NAME_OLD"),
         "USER": os.getenv("DB_USER"),
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
@@ -150,12 +150,12 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
 # Static files
-STATIC_URL = "static/"
+STATIC_URL = "static-old/"
 STATIC_ROOT = "/app/static"
 
 # Media files
 if DJANGO_ENV == "development":
-    MEDIA_URL = "media/"
+    MEDIA_URL = "media-old/"
     MEDIA_ROOT = "/app/media"
 else:
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
@@ -357,26 +357,26 @@ LOGGING = {
     "loggers": {
         "": {  # Root logger
             "level": "INFO",
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
         },
         "django": {  # Django-specific logger
             "level": "INFO",
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "propagate": False,
         },
         "botocore": {  # botocore logger (for S3/AWS interactions)
             "level": "WARNING",
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "propagate": False,
         },
         "boto3": {  # boto3 logger
             "level": "WARNING",
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "propagate": False,
         },
         "s3transfer": {  # s3transfer logger (used by boto3 for file transfers)
             "level": "WARNING",
-            "handlers": ["console", "file"],
+            "handlers": ["console"],
             "propagate": False,
         },
     },

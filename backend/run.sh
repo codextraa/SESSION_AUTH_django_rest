@@ -24,15 +24,15 @@ infisical run --path="/Session-django-rest/backend" -- sh -c '
   done
 
   # Check if database exists, create it if not
-  echo "Checking if database '\''$DB_NAME'\'' exists..."
-  if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "SELECT 1 FROM pg_database WHERE datname='\''$DB_NAME'\''" | grep -q 1; then
-    echo "Database '\''$DB_NAME'\'' already exists."
+  echo "Checking if database '\''$DB_NAME_OLD'\'' exists..."
+  if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "SELECT 1 FROM pg_database WHERE datname='\''$DB_NAME_OLD'\''" | grep -q 1; then
+    echo "Database '\''$DB_NAME_OLD'\'' already exists."
   else
-    echo "Database '\''$DB_NAME'\'' does not exist. Creating it..."
-    if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_NAME"; then
-      echo "Database '\''$DB_NAME'\'' created successfully!"
+    echo "Database '\''$DB_NAME_OLD'\'' does not exist. Creating it..."
+    if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d postgres -c "CREATE DATABASE $DB_NAME_OLD"; then
+      echo "Database '\''$DB_NAME_OLD'\'' created successfully!"
     else
-      echo "Error: Failed to create database '\''$DB_NAME'\''. Exiting..." >&2
+      echo "Error: Failed to create database '\''$DB_NAME_OLD'\''. Exiting..." >&2
       exit 1
     fi
   fi
