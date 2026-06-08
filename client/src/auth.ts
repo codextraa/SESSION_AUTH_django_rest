@@ -1,5 +1,6 @@
-import NextAuth, { Account, Profile, User } from "next-auth";
+import NextAuth, { Account, Profile, User, Session } from "next-auth";
 import type { AdapterUser } from "next-auth/adapters";
+import { JWT } from "next-auth/jwt";
 import GoogleProvider from "next-auth/providers/google";
 import FacebookProvider from "next-auth/providers/facebook";
 import GitHubProvider from "next-auth/providers/github";
@@ -43,12 +44,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: process.env.NEXTAUTH_TRUSTED_HOST ? true : false,
   callbacks: {
     /* eslint-disable-next-line no-unused-vars */
-    async signIn({ user, account, profile, email, credentials }: { 
-      user: User | AdapterUser; 
-      account?: Account | null; 
-      profile?: Profile; 
-      email?: { verificationRequest?: boolean }; 
-      credentials?: Record<string, any>;
+    async signIn({
+      user,
+      account,
+      profile,
+      email,
+      credentials,
+    }: {
+      user: User | AdapterUser;
+      account?: Account | null;
+      profile?: Profile;
+      email?: { verificationRequest?: boolean };
+      credentials?: Record<string, unknown>;
     }) {
       // // console.log('account', account);
       // // console.log('user', user);
@@ -56,7 +63,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       // // console.log('email', email);
       // // console.log('credentials', credentials);
       // let result;
-      
+
       // if (account) {
       //   if (account.provider === "google") {
       //     result = await socialLoginAction("google-oauth2", account.access_token);
@@ -77,13 +84,17 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
       return true;
     },
-    async session({ session, token, user }: { 
-      session: any; 
-      token: any; 
-      user: any; 
+    async session({
+      session,
+      token,
+      user,
+    }: {
+      session: Session & { accessToken?: string };
+      token: JWT;
+      user: User | AdapterUser;
     }) {
       // Send properties to the client, like an access_token from a provider.
-      if (token) {
+      if (token && typeof token.accessToken === "string") {
         session.accessToken = token.accessToken;
       }
       return session;

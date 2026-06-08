@@ -1,52 +1,61 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
+import { ResponseCookie } from "@edge-runtime/cookies";
 import {
   encrypt,
   decrypt,
   validateSessionData,
   validateCSRFTokenData,
 } from "./session";
-import type { SessionData, CSRFTokenData } from "./session";
 import { getCSRFToken, refreshSession } from "./api";
+import {
+  SessionData,
+  CSRFTokenData,
+  CSRFTokenResponse,
+  CSRFTokenResponseSuccess,
+  SessionResponse,
+  SessionResponseSuccess,
+} from "@/types/types";
 
-export const setSessionCookie = async (data: any) => {
+export const setSessionCookie = async (
+  data: SessionResponseSuccess,
+): Promise<ResponseCookie> => {
   try {
     // Validate the incoming session data
-    const validsessionData = validateSessionData(data); // Sanitize and validate data
-    const validcsrftoken = validateCSRFTokenData(data);
+    const validSessionData: SessionData | null = validateSessionData(data); // Sanitize and validate data
+    const validCSRFToken: CSRFTokenData | null = validateCSRFTokenData(data);
 
-    if (!validsessionData) {
+    if (!validSessionData) {
       throw new Error("Invalid session data.");
     }
 
-    if (!validcsrftoken) {
+    if (!validCSRFToken) {
       throw new Error("Invalid CSRFToken");
     }
 
     // Encrypt the session data
-    const encryptedCSRFToken = await encrypt(validcsrftoken);
-    const encryptedSessionData = await encrypt(validsessionData);
+    const encryptedCSRFToken = await encrypt(validCSRFToken);
+    const encryptedSessionData = await encrypt(validSessionData);
 
     // Create a secure cookie
     // Set the secure cookie using Next.js cookies API
+    const cookieConfig: Omit<ResponseCookie, "name" | "value"> = {
+      httpOnly: true,
+      secure: process.env.HTTPS === "true", // Secure in production
+      maxAge: 60 * 60 * 24, // One day in seconds
+      path: "/", // Dynamic path
+      sameSite: "lax", // Helps prevent CSRF attacks
+    };
+
     const cookieStore = await cookies();
-    cookieStore.set("__Secure-csrftoken", encryptedCSRFToken, {
-      httpOnly: true,
-      secure: process.env.HTTPS === "true", // Secure in production
-      maxAge: 60 * 60 * 24, // One day in seconds
-      path: "/", // Dynamic path
-      sameSite: "lax", // Helps prevent CSRF attacks
-    });
+    cookieStore.set("__Secure-csrfToken", encryptedCSRFToken, cookieConfig);
+    cookieStore.set("__Secure-session", encryptedSessionData, cookieConfig);
 
-    cookieStore.set("__Secure-session", encryptedSessionData, {
-      httpOnly: true,
-      secure: process.env.HTTPS === "true", // Secure in production
-      maxAge: 60 * 60 * 24, // One day in seconds
-      path: "/", // Dynamic path
-      sameSite: "lax", // Helps prevent CSRF attacks
-    });
-
-    return cookieStore.get("__Secure-session");
+    return {
+      name: "__Secure-session",
+      value: encryptedSessionData,
+      ...cookieConfig,
+    };
   } catch (error) {
     console.error("Error setting cookie:", error);
     throw new Error("Failed to set session cookie.");
@@ -55,18 +64,33 @@ export const setSessionCookie = async (data: any) => {
 
 export const setCSRFCookie = async (): Promise<void> => {
   try {
-    const csrf_token_data = await getCSRFToken();
+    const csrfTokenResponse: CSRFTokenResponse = await getCSRFToken();
 
-    const validcsrftoken = validateCSRFTokenData(csrf_token_data);
+    if (
+      csrfTokenResponse &&
+      "error" in csrfTokenResponse &&
+      csrfTokenResponse.error
+    ) {
+      throw new Error("Failed to fetch CSRFToken");
+    }
 
-    if (!validcsrftoken) {
+    const csrfTokenSuccess = csrfTokenResponse as CSRFTokenResponseSuccess;
+
+    if (!csrfTokenSuccess.csrf_token || !csrfTokenSuccess.csrf_token_expiry) {
+      throw new Error("CSRF token data is missing from the response");
+    }
+
+    const validCSRFToken: CSRFTokenData | null =
+      validateCSRFTokenData(csrfTokenSuccess);
+
+    if (!validCSRFToken) {
       throw new Error("Invalid CSRFToken");
     }
 
-    const encryptedSessionData = await encrypt(validcsrftoken);
+    const encryptedSessionData = await encrypt(validCSRFToken);
 
     const cookieStore = await cookies();
-    cookieStore.set("__Secure-csrftoken", encryptedSessionData, {
+    cookieStore.set("__Secure-csrfToken", encryptedSessionData, {
       httpOnly: true,
       secure: process.env.HTTPS === "true", // Secure in production
       maxAge: 60 * 60 * 24, // One day in seconds
@@ -74,29 +98,42 @@ export const setCSRFCookie = async (): Promise<void> => {
       sameSite: "lax", // Helps prevent CSRF attacks
     });
   } catch (error) {
-    console.error("Error setting csrftoken:", error);
+    console.error("Error setting csrfToken:", error);
     throw new Error("Failed to set CSRFToken");
   }
 };
 
-export const updateSessionCookie = async (req: NextRequest) => {
+export const updateSessionCookie = async (
+  req: NextRequest,
+): Promise<ResponseCookie | false | undefined> => {
   const session = req.cookies.get("__Secure-session");
 
   if (!session) {
     return false;
   }
 
-  const response = await refreshSession();
+  const refreshSessionResponse: SessionResponse = await refreshSession();
 
   if (
-    response.user_id &&
-    response.user_role &&
-    response.sessionid &&
-    response.session_expiry &&
-    response.csrf_token &&
-    response.csrf_token_expiry
+    refreshSessionResponse &&
+    "error" in refreshSessionResponse &&
+    refreshSessionResponse.error
   ) {
-    return await setSessionCookie(response);
+    throw new Error("Failed to refresh Session Id");
+  }
+
+  const refreshSessionSuccess =
+    refreshSessionResponse as SessionResponseSuccess;
+
+  if (
+    refreshSessionSuccess.user_id &&
+    refreshSessionSuccess.user_role &&
+    refreshSessionSuccess.sessionid &&
+    refreshSessionSuccess.session_expiry &&
+    refreshSessionSuccess.csrf_token &&
+    refreshSessionSuccess.csrf_token_expiry
+  ) {
+    return await setSessionCookie(refreshSessionSuccess);
   } else {
     await deleteSessionCookie();
     await deleteCSRFCookie();
@@ -121,8 +158,8 @@ export const deleteSessionCookie = async (): Promise<void> => {
 export const deleteCSRFCookie = async (): Promise<void> => {
   const cookieStore = await cookies();
 
-  if (cookieStore.has("__Secure-csrftoken")) {
-    cookieStore.set("__Secure-csrftoken", "", {
+  if (cookieStore.has("__Secure-csrfToken")) {
+    cookieStore.set("__Secure-csrfToken", "", {
       httpOnly: true,
       secure: process.env.HTTPS === "true", // Secure in production
       maxAge: 0, // Expire the cookie immediately
@@ -132,14 +169,14 @@ export const deleteCSRFCookie = async (): Promise<void> => {
   }
 };
 
-export const getCSRFTokencookie = async () => {
+export const getCSRFTokenCookie = async () => {
   const cookieStore = await cookies();
-  return cookieStore.get("__Secure-csrftoken");
+  return cookieStore.get("__Secure-csrfToken");
 };
 
 export const getCSRFTokenFromSession = async (): Promise<string | null> => {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("__Secure-csrftoken"); // Retrieve the session cookie
+  const sessionCookie = cookieStore.get("__Secure-csrfToken"); // Retrieve the session cookie
 
   if (!sessionCookie) {
     return null; // No session cookie found
@@ -150,17 +187,31 @@ export const getCSRFTokenFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: CSRFTokenData = await decrypt(sessionCookie.value); // Decrypt the session data
-    return decryptedData?.csrf_token || null; // Return user_id if present
+    const decryptedData: SessionData | CSRFTokenData = await decrypt(
+      sessionCookie.value,
+    ); // Decrypt the session data
+
+    if (
+      decryptedData &&
+      "csrf_token" in decryptedData &&
+      decryptedData.csrf_token
+    ) {
+      // Check if user_id is present
+      return decryptedData.csrf_token; // Return user_id if present
+    }
+
+    return null;
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
 
-export const getCSRFTokenExpiryFromSession = async (): Promise<boolean | null> => {
+export const getCSRFTokenExpiryFromSession = async (): Promise<
+  boolean | null
+> => {
   const cookieStore = await cookies();
-  const sessionCookie = cookieStore.get("__Secure-csrftoken"); // Retrieve the session cookie
+  const sessionCookie = cookieStore.get("__Secure-csrfToken"); // Retrieve the session cookie
 
   if (!sessionCookie) {
     return null; // No session cookie found
@@ -171,9 +222,15 @@ export const getCSRFTokenExpiryFromSession = async (): Promise<boolean | null> =
   }
 
   try {
-    const decryptedData: CSRFTokenData = await decrypt(sessionCookie.value); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData = await decrypt(
+      sessionCookie.value,
+    ); // Decrypt the session data
 
-    if (decryptedData && decryptedData.csrf_token_expiry) {
+    if (
+      decryptedData &&
+      "csrf_token_expiry" in decryptedData &&
+      decryptedData.csrf_token_expiry
+    ) {
       // Check if session_expiry is present
       const expiryDate = new Date(decryptedData.csrf_token_expiry);
       const currentDate = new Date();
@@ -213,8 +270,16 @@ export const getUserIdFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: SessionData = await decrypt(sessionCookie.value); // Decrypt the session data
-    return decryptedData?.user_id || null; // Return user_id if present
+    const decryptedData: SessionData | CSRFTokenData = await decrypt(
+      sessionCookie.value,
+    ); // Decrypt the session data
+
+    if (decryptedData && "user_id" in decryptedData && decryptedData.user_id) {
+      // Check if user_id is present
+      return decryptedData.user_id; // Return user_id if present
+    }
+
+    return null;
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
@@ -234,8 +299,20 @@ export const getUserRoleFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: SessionData = await decrypt(sessionCookie.value); // Decrypt the session data
-    return decryptedData?.user_role || null; // Return user_role if present
+    const decryptedData: SessionData | CSRFTokenData = await decrypt(
+      sessionCookie.value,
+    ); // Decrypt the session data
+
+    if (
+      decryptedData &&
+      "user_role" in decryptedData &&
+      decryptedData.user_role
+    ) {
+      // Check if user_id is present
+      return decryptedData.user_role; // Return user_id if present
+    }
+
+    return null;
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
@@ -254,15 +331,29 @@ export const getSessionIdFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: SessionData = await decrypt(sessionCookie.value); // Decrypt the session data
-    return decryptedData?.sessionid || null; // Return sessionid if present
+    const decryptedData: SessionData | CSRFTokenData = await decrypt(
+      sessionCookie.value,
+    ); // Decrypt the session data
+
+    if (
+      decryptedData &&
+      "sessionid" in decryptedData &&
+      decryptedData.sessionid
+    ) {
+      // Check if user_id is present
+      return decryptedData.sessionid; // Return user_id if present
+    }
+
+    return null;
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
 
-export const getSessionExpiryFromSession = async (): Promise<boolean | null> => {
+export const getSessionExpiryFromSession = async (): Promise<
+  boolean | null
+> => {
   const cookieStore = await cookies();
   const sessionCookie = cookieStore.get("__Secure-session"); // Retrieve the session cookie
 
@@ -275,9 +366,15 @@ export const getSessionExpiryFromSession = async (): Promise<boolean | null> => 
   }
 
   try {
-    const decryptedData: SessionData = await decrypt(sessionCookie.value); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData = await decrypt(
+      sessionCookie.value,
+    ); // Decrypt the session data
 
-    if (decryptedData && decryptedData.session_expiry) {
+    if (
+      decryptedData &&
+      "session_expiry" in decryptedData &&
+      decryptedData.session_expiry
+    ) {
       // Check if session_expiry is present
       const expiryDate = new Date(decryptedData.session_expiry);
       const currentDate = new Date();

@@ -1,17 +1,12 @@
+import {
+  SessionData,
+  CSRFTokenData,
+  CSRFTokenResponseSuccess,
+  SessionResponseSuccess,
+} from "@/types/types";
+
 const ALGORITHM = "AES-GCM";
 let SECRET_KEY: string | undefined;
-
-export interface SessionData {
-  user_id: string;
-  user_role: string;
-  sessionid: string;
-  session_expiry: string;
-}
-
-export interface CSRFTokenData {
-  csrf_token: string;
-  csrf_token_expiry: string;
-}
 
 const get_secret_key = async (): Promise<void> => {
   if (typeof window !== "undefined") {
@@ -23,7 +18,9 @@ const get_secret_key = async (): Promise<void> => {
   }
 };
 
-export function validateSessionData(data: any): SessionData | null {
+export function validateSessionData(
+  data: SessionResponseSuccess,
+): SessionData | null {
   // Check that the data is an object
   if (typeof data !== "object" || data === null) {
     return null;
@@ -61,7 +58,9 @@ export function validateSessionData(data: any): SessionData | null {
   };
 }
 
-export function validateCSRFTokenData(data: any): CSRFTokenData | null {
+export function validateCSRFTokenData(
+  data: CSRFTokenResponseSuccess,
+): CSRFTokenData | null {
   // Check that the data is an object
   if (typeof data !== "object" || data === null) {
     return null;
@@ -87,10 +86,12 @@ export function validateCSRFTokenData(data: any): CSRFTokenData | null {
 
 /**
  * Encrypts the session data using Web Crypto API
- * @param {any} data - The session data to encrypt
+ * @param {SessionData | CSRFTokenData} data - The session data or CSRF token to encrypt
  * @returns {Promise<string>} - Encrypted data in base64 format
  */
-export async function encrypt(data: any): Promise<string> {
+export async function encrypt(
+  data: SessionData | CSRFTokenData,
+): Promise<string> {
   if (!SECRET_KEY) {
     await get_secret_key();
     if (!SECRET_KEY || SECRET_KEY.length !== 64) {
@@ -138,9 +139,11 @@ export async function encrypt(data: any): Promise<string> {
 /**
  * Decrypts the encrypted session data using Web Crypto API
  * @param {string} encryptedData - The encrypted data in base64 format
- * @returns {Promise<any>} - The decrypted session data
+ * @returns {Promise<SessionData | CSRFTokenData>} - The decrypted session data
  */
-export async function decrypt(encryptedData: string): Promise<any> {
+export async function decrypt(
+  encryptedData: string,
+): Promise<SessionData | CSRFTokenData> {
   if (!SECRET_KEY) {
     await get_secret_key();
     if (!SECRET_KEY || SECRET_KEY.length !== 64) {

@@ -1,10 +1,8 @@
-import Link from "next/link";
-
 export default function Page() {
   return (
     <div className="max-w-4xl mx-auto p-8">
       <h1 className="text-3xl font-bold mb-6">Welcome to SESSION-AUTH</h1>
-      
+
       <p className="mb-4 text-gray-700 leading-relaxed font-['Merriweather'] font-bold text-[20px] leading-[25px] text-left text-black">
         A fullstack web application built with <strong>NextJS</strong> for the
         frontend and <strong>Django</strong> for the backend, utilizing{" "}
