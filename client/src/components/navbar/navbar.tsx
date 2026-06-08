@@ -22,6 +22,7 @@ export default function Navbar({ initialSession, initialRole }: NavbarProps) {
     setRole(initialRole);
   }, [initialSession, initialRole]);
 
+  //! Route should be /auth called from route.ts
   const excludedRoutes = ["/auth/login", "/auth/signup"];
 
   if (excludedRoutes.includes(pathname)) {
