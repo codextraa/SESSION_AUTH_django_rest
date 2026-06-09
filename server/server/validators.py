@@ -1,5 +1,7 @@
 import re
 from django.core.validators import RegexValidator
+from django.core.exceptions import ValidationError
+
 
 validate_username_format = RegexValidator(
     regex=r"^\S+$",  # No whitespace allowed
@@ -32,4 +34,5 @@ def validate_password_complexity(password):
     if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
         errors.append("Password must contain at least one special character.")
 
-    return {"password": errors}
+    if errors:
+        raise ValidationError(errors)
