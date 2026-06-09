@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { ResponseCookie } from "@edge-runtime/cookies";
 import {
   getSessionCookie,
   getSessionExpiryFromSession,
@@ -36,7 +37,7 @@ export async function proxy(req: NextRequest) {
   }
 
   let isLoggedIn: boolean | null = await getSessionExpiryFromSession();
-  let updatedCookie: any;
+  let updatedCookie: ResponseCookie | false | undefined = false;
 
   if (!isLoggedIn) {
     updatedCookie = await updateSessionCookie(req);
@@ -45,7 +46,7 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  let csrfToken = await getCSRFTokenExpiryFromSession();
+  const csrfToken = await getCSRFTokenExpiryFromSession();
   if (!csrfToken) {
     await setCSRFCookie();
   }
