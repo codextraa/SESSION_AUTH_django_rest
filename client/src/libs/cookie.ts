@@ -1,6 +1,6 @@
 import { cookies } from "next/headers";
 import type { NextRequest } from "next/server";
-import { ResponseCookie } from "@edge-runtime/cookies";
+import { RequestCookie, ResponseCookie } from "@edge-runtime/cookies";
 import {
   encrypt,
   decrypt,
@@ -169,7 +169,9 @@ export const deleteCSRFCookie = async (): Promise<void> => {
   }
 };
 
-export const getCSRFTokenCookie = async () => {
+export const getCSRFTokenCookie = async (): Promise<
+  RequestCookie | undefined
+> => {
   const cookieStore = await cookies();
   return cookieStore.get("__Secure-csrfToken");
 };
@@ -245,14 +247,16 @@ export const getCSRFTokenExpiryFromSession = async (): Promise<
       }
     }
 
-    return false; // Return session_expiry if present
+    return false; // Return false if csrf_token_expiry is not present
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
   }
 };
 
-export const getSessionCookie = async () => {
+export const getSessionCookie = async (): Promise<
+  RequestCookie | undefined
+> => {
   const cookieStore = await cookies();
   return cookieStore.get("__Secure-session");
 };
@@ -279,7 +283,7 @@ export const getUserIdFromSession = async (): Promise<string | null> => {
       return decryptedData.user_id; // Return user_id if present
     }
 
-    return null;
+    return null; // Return null if user_id is not present
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
@@ -312,7 +316,7 @@ export const getUserRoleFromSession = async (): Promise<string | null> => {
       return decryptedData.user_role; // Return user_id if present
     }
 
-    return null;
+    return null; // Return null if user_id is not present
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
@@ -340,11 +344,11 @@ export const getSessionIdFromSession = async (): Promise<string | null> => {
       "sessionid" in decryptedData &&
       decryptedData.sessionid
     ) {
-      // Check if user_id is present
-      return decryptedData.sessionid; // Return user_id if present
+      // Check if sessionid is present
+      return decryptedData.sessionid; // Return sessionid if present
     }
 
-    return null;
+    return null; // Return null if sessionid is not present
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
@@ -389,7 +393,7 @@ export const getSessionExpiryFromSession = async (): Promise<
       }
     }
 
-    return false; // Return session_expiry if present
+    return false; // Return false if session_expiry is not present
   } catch (error) {
     console.error("Error decrypting session data:", error);
     return null; // Return null if decryption fails
