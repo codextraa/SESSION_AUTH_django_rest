@@ -27,7 +27,12 @@ export interface reCaptchaVerifyResponseSuccess {
   success: string | undefined;
 }
 
+export interface reCaptchaTokenData {
+  recaptcha_token: string | undefined;
+}
+
 export type reCaptchaVerifyResponse =
+  | reCaptchaTokenData
   | reCaptchaVerifyResponseSuccess
   | ErrorResponse;
 
@@ -48,3 +53,10 @@ export interface SessionResponseSuccess {
 }
 
 export type SessionResponse = SessionResponseSuccess | ErrorResponse;
+
+declare global {
+  interface Window {
+    grecaptcha: any;
+    onloadCallback: () => void;
+  }
+}

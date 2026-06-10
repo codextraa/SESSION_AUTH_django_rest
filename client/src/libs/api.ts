@@ -25,9 +25,9 @@ export const refreshSession = async (): Promise<SessionResponse> => {
   return apiClientOld.post("/session/refresh/", {});
 };
 
-export const reCaptchaVerify = async (data: {
-  recaptcha_token: string;
-}): Promise<reCaptchaVerifyResponse> => {
+export const reCaptchaVerify = async (
+  data: reCaptchaVerifyResponse,
+): Promise<reCaptchaVerifyResponse> => {
   return apiClientOld.post("/recaptcha-verify/", data);
 };
 
