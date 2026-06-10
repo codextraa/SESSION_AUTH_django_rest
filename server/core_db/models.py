@@ -4,10 +4,11 @@ from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
 )
+from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 from django.core.validators import validate_email
 from phonenumber_field.modelfields import PhoneNumberField
-from server.validators import validate_username_format, validate_password_complexity
+from server.validators import validate_username_format
 
 
 class UserManager(BaseUserManager):
@@ -98,9 +99,8 @@ class User(AbstractBaseUser, PermissionsMixin):
         """Validates raw password before hashing"""
         if not raw_password:
             raise ValidationError({"password": "Password is required"})
-        errors = validate_password_complexity(raw_password)
-        if len(errors["password"]) > 0:
-            raise ValidationError(errors)
+
+        validate_password(raw_password, user=self)
         super().set_password(raw_password)
 
     def save(self, *args, **kwargs):

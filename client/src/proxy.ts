@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { ResponseCookie } from "@edge-runtime/cookies";
 import {
-  getSessionCookie,
   getSessionExpiryFromSession,
   updateSessionCookie,
   getCSRFTokenExpiryFromSession,
@@ -22,13 +21,10 @@ export async function proxy(req: NextRequest) {
   const isPublicRoute = publicRoutes.includes(pathname);
   const isApiRoute = pathname.startsWith(apiRoute);
   const isAuthRoute = pathname.startsWith(authRoute);
-  const isSessionCookie = await getSessionCookie();
 
   if (isPublicRoute) {
     console.warn("Handling public route");
-    if (!isSessionCookie) {
-      return NextResponse.next(); // Allow access to public routes
-    }
+    return NextResponse.next(); // Allow access to public routes
   }
 
   if (isApiRoute) {

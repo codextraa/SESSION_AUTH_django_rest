@@ -59,7 +59,7 @@ export function validateSessionData(
 }
 
 export function validateCSRFTokenData(
-  data: CSRFTokenResponseSuccess,
+  data: SessionResponseSuccess | CSRFTokenResponseSuccess,
 ): CSRFTokenData | null {
   // Check that the data is an object
   if (typeof data !== "object" || data === null) {

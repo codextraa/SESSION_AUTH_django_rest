@@ -30,9 +30,7 @@ export class ApiClient {
     this.lastRequestTimes.set(endpoint, Date.now());
   }
 
-  async handleErrors(
-    response: Response,
-  ): Promise<unknown> {
+  async handleErrors(response: Response): Promise<unknown> {
     const contentType = response.headers.get("Content-Type") || "";
     // const clonedResponse = response.clone();
 
