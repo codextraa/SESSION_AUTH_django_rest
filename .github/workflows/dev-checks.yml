@@ -49,9 +49,11 @@ jobs:
           path: postgres-db
 
       - name: Create token file for Session-djrest
+        working-directory: ./docker
         run: echo "${{ secrets.INFISICAL_TOKEN_DEV }}" > infisical_token.txt
 
       - name: Create Infisical config for Session-djrest
+        working-directory: ./docker
         run: |
           echo "${{ secrets.INFISICAL_JSON_DEV }}" | base64 -d > .infisical.json
 
@@ -95,6 +97,7 @@ jobs:
         run: docker logs session-djrest-server
 
       - name: Stop Session-djrest containers
+        working-directory: ./docker
         if: always()
         run: docker compose down -v
 
