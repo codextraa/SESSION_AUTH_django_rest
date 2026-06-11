@@ -170,6 +170,12 @@ class RecaptchaValidationView(APIView):
                 },
             ),
             OpenApiExample(
+                name="Action Missing",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": "Action is required."},
+            ),
+            OpenApiExample(
                 name="Missing reCAPTCHA Token",
                 response_only=True,
                 status_codes=["400"],
@@ -223,6 +229,14 @@ class RecaptchaValidationView(APIView):
         """Post a request to validate reCAPTCHA.
         Returns a response with success or error message."""
         try:
+            expected_action = request.data.get("expected_action")
+
+            if not expected_action:
+                return Response(
+                    {"error": "Action is required."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             extracted_data = extract_recaptcha_data(request)
 
             if isinstance(extracted_data, Response):
@@ -230,7 +244,7 @@ class RecaptchaValidationView(APIView):
 
             is_human, message = verify_recaptcha_token(
                 token=extracted_data["recaptcha_token"],
-                expected_action="login",
+                expected_action=expected_action,
                 recaptcha_version=extracted_data["recaptcha_version"],
                 user_ip_address=extracted_data["user_ip"],
                 user_agent=extracted_data["user_agent"],
