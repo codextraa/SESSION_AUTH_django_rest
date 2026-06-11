@@ -206,12 +206,6 @@ class RecaptchaValidationView(APIView):
                 value={"error": "Action mismatch. Expected 'login', got 'signup'"},
             ),
             OpenApiExample(
-                name="Challenge Mismatch",
-                response_only=True,
-                status_codes=["403"],
-                value={"error": "User failed the reCAPTCHA visual challenge."},
-            ),
-            OpenApiExample(
                 name="Low Score",
                 response_only=True,
                 status_codes=["403"],

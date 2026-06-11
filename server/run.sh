@@ -5,7 +5,7 @@ infisical run --path="/Session-django-rest/backend" -- sh -c '
   cd /app &&
 
   echo "Loading GCP service account credentials..."
-  echo "$GCP_SERVICE_ACCOUNT_JSON" > /tmp/gcp-service-account.json
+  printf "%s" "$GCP_SERVICE_ACCOUNT_JSON" > /tmp/gcp-service-account.json
   chmod 600 /tmp/gcp-service-account.json
   export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-service-account.json"
   

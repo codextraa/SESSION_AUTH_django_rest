@@ -53,13 +53,9 @@ def verify_recaptcha_token(
             f"Action mismatch. Expected '{expected_action}', got '{response.token_properties.action}'",
         )
 
-    if recaptcha_version == "v2":
-        challenge_result = getattr(response.risk_analysis, "challenge", None)
-        if challenge_result != recaptchaenterprise_v1.RiskAnalysis.Challenge.PASS:
-            return False, "User failed the reCAPTCHA visual challenge."
-    else:
-        score = response.risk_analysis.score
-        if score < 0.7:
-            return False, f"High risk transaction blocked. Score: {score}"
+    score = response.risk_analysis.score
+
+    if score < 0.7:
+        return False, f"High risk transaction blocked. Score: {score}"
 
     return True, "reCAPTCHA validation successful."
