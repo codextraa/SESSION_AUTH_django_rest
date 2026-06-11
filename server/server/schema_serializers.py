@@ -12,6 +12,19 @@ class CSRFTokenResponseSerializer(serializers.Serializer):  # pylint: disable=W0
     )
 
 
+class RecaptchaRequestSerializer(serializers.Serializer):  # pylint: disable=W0223
+    recaptcha_token = serializers.CharField(required=True)
+    recaptcha_version = serializers.CharField(required=True)
+
+
+class SuccessResponseSerializer(serializers.Serializer):  # pylint: disable=W0223
+    """Standard Success Response structure."""
+
+    success = serializers.CharField(
+        help_text="A descriptive message indicating the success of the operation.",
+    )
+
+
 class ErrorResponseSerializer(serializers.Serializer):  # pylint: disable=W0223
     """Standard Error Response structure."""
 
