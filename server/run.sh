@@ -3,6 +3,11 @@ export INFISICAL_TOKEN=$(cat /run/secrets/infisical_token)
 cd /run/secrets
 infisical run --path="/Session-django-rest/backend" -- sh -c '
   cd /app &&
+
+  echo "Loading GCP service account credentials..."
+  echo "$GCP_SERVICE_ACCOUNT_JSON" > /tmp/gcp-service-account.json
+  chmod 600 /tmp/gcp-service-account.json
+  export GOOGLE_APPLICATION_CREDENTIALS="/tmp/gcp-service-account.json"
   
   # Test PostgreSQL connection with retry and fallback
   echo "Testing connection to PostgreSQL server at $DB_HOST:$DB_PORT..."
