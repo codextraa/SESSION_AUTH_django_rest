@@ -9,15 +9,6 @@ def verify_recaptcha_token(
     Creates an assessment to analyze the risk of a UI action.
     Returns: (is_valid, error_or_success_message)
     """
-    if (
-        not token
-        and expected_action
-        and recaptcha_version
-        and user_ip_address
-        and user_agent
-    ):
-        return False, "reCAPTCHA token is missing."
-
     project_id = settings.RECAPTCHA_PROJECT_ID
     if recaptcha_version == "v2":
         recaptcha_site_key = settings.RECAPTCHA_SITE_KEY_V2

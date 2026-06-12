@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from django.middleware.csrf import get_token
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_protect
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -14,51 +16,7 @@ from server.schema_serializers import (
     SuccessResponseSerializer,
     ErrorResponseSerializer,
 )
-
-
-def extract_recaptcha_data(request):
-    """Extracts recaptcha token and version from the request data and
-    extracts user_agent and user_ip from the request headers."""
-
-    recaptcha_token = request.data.get("recaptcha_token")
-    if recaptcha_token is None:
-        return Response(
-            {"error": "Missing reCAPTCHA token."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    recaptcha_version = request.data.get("recaptcha_version")
-    if recaptcha_version is None:
-        return Response(
-            {"error": "Missing reCAPTCHA version."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    user_agent = request.META.get("HTTP_USER_AGENT", "")
-    if user_agent == "":
-        return Response(
-            {"error": "Missing User Agent."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    user_ip = request.META.get(
-        "HTTP_X_FORWARDED_FOR", request.META.get("HTTP_X_REAL_IP", "")
-    )
-    if user_ip == "":
-        return Response(
-            {"error": "Missing User IP Address."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    if "," in user_ip:
-        user_ip = user_ip.split(",")[0].strip()
-
-    return {
-        "recaptcha_token": recaptcha_token,
-        "recaptcha_version": recaptcha_version,
-        "user_ip": user_ip,
-        "user_agent": user_agent,
-    }
+from .helpers import extract_recaptcha_data
 
 
 class CSRFTokenView(APIView):
@@ -225,6 +183,7 @@ class RecaptchaValidationView(APIView):
             ),
         ],
     )
+    @method_decorator(csrf_protect)
     def post(self, request, *args, **kwargs):
         """Post a request to validate reCAPTCHA.
         Returns a response with success or error message."""
