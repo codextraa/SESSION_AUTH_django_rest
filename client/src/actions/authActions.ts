@@ -10,8 +10,7 @@ export async function verifyReCaptchaAction(
     recaptcha_token: token,
   };
   try {
-    const response = await reCaptchaVerify(data);
-    return response;
+    return await reCaptchaVerify(data);
   } catch (error) {
     console.error(error);
     return {

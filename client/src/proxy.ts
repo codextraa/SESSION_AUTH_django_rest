@@ -16,15 +16,21 @@ import {
 
 export async function proxy(req: NextRequest) {
   console.warn("Middleware triggered");
+  // const nonce = req.headers.get("x-csp-nonce") || "";
   const { pathname } = req.nextUrl;
 
   const isPublicRoute = publicRoutes.includes(pathname);
   const isApiRoute = pathname.startsWith(apiRoute);
   const isAuthRoute = pathname.startsWith(authRoute);
 
+  const res = NextResponse.next();
+  // if (nonce) {
+  // res.headers.set('Content-Security-Policy', `script-src 'nonce-${nonce}'`);
+  // }
+
   if (isPublicRoute) {
     console.warn("Handling public route");
-    return NextResponse.next(); // Allow access to public routes
+    return res; // Allow access to public routes
   }
 
   if (isApiRoute) {
@@ -54,11 +60,11 @@ export async function proxy(req: NextRequest) {
       // Avoid redirect loop if already at the login page
       if (pathname === DEFAULT_LOGIN_REDIRECT) {
         console.warn("Skipping middleware for DEFAULT_LOGIN_REDIRECT");
-        return NextResponse.next();
+        return res;
       }
       return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url)); // Redirect to homepage or dashboard
     }
-    return NextResponse.next(); // Allow access to login/register if not logged in
+    return res; // Allow access to login/register if not logged in
   }
 
   // Redirect unauthenticated users from protected routes to the login page
@@ -67,12 +73,10 @@ export async function proxy(req: NextRequest) {
     // Prevent redirect loop if already at the login page
     if (pathname === "/auth/login") {
       console.warn("Skipping middleware for /auth/login");
-      return NextResponse.next();
+      return res;
     }
     return NextResponse.redirect(new URL("/auth/login", req.url)); // Redirect to login page
   }
-
-  const res = NextResponse.next();
 
   if (updatedCookie) {
     // Set the updated session cookie in the response

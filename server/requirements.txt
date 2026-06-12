@@ -27,6 +27,12 @@ django-storages==1.14.6
 djangorestframework==3.17.1
 drf-spectacular==0.29.0
 frozenlist==1.8.0
+google-api-core==2.31.0
+google-auth==2.53.0
+google-cloud-recaptcha-enterprise==1.31.0
+googleapis-common-protos==1.75.0
+grpcio==1.81.0
+grpcio-status==1.81.0
 gunicorn==26.0.0
 idna==3.18
 inflection==0.5.1
@@ -47,7 +53,11 @@ phonenumberslite==9.0.31
 pillow==12.2.0
 platformdirs==4.10.0
 propcache==0.5.2
+proto-plus==1.28.0
+protobuf==7.35.0
 psycopg2-binary==2.9.12
+pyasn1==0.6.3
+pyasn1_modules==0.4.2
 pycparser==3.0
 PyJWT==2.13.0
 pylint==4.0.5
