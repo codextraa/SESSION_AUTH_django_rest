@@ -4,10 +4,10 @@ from rest_framework import serializers
 class CSRFTokenResponseSerializer(serializers.Serializer):  # pylint: disable=W0223
     """Standard CSRF Token structure."""
 
-    csrfToken = serializers.CharField(
+    csrf_token = serializers.CharField(
         help_text="The CSRF token to be used in subsequent requests.",
     )
-    csrfTokenExpiry = serializers.DateTimeField(
+    csrf_token_expiry = serializers.DateTimeField(
         help_text="CSRF Token Expiry in ISO 8601 format.",
     )
 
