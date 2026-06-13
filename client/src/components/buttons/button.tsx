@@ -49,17 +49,18 @@ export function ActionNavButton({
   );
 }
 
-export function LoginButton() {
+export function LoginButton({ disabled }: { disabled: boolean }) {
   const { pending } = useFormStatus();
+  const isPending = pending || false;
 
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={disabled || isPending}
       className="w-full h-[50px] bg-[#263775] rounded-[37px] transition-all hover:opacity-90 disabled:opacity-50 active:scale-[0.99] cursor-pointer flex items-center justify-center"
     >
       <span className="font-['Merriweather'] font-bold text-[18px] leading-[23px] text-[#E7E7E7]">
-        {pending ? "Checking..." : "Login"}
+        {isPending ? "Checking..." : "Login"}
       </span>
     </button>
   );
