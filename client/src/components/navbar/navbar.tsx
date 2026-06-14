@@ -34,7 +34,7 @@ export default function Navbar({ initialSession, initialRole }: NavbarProps) {
   };
 
   return (
-    <nav className="absolute top-[15px] left-1/2 -translate-x-1/2 w-full max-w-[1118px] h-[31px] flex flex-row items-center justify-between px-6 z-[100]">
+    <nav className="w-full min-h-[31px] py-4 px-6 pt-[15px] md:px-[80px] flex flex-row items-center justify-between px-6 z-[100]">
       <Link
         href="/"
         className="w-[48px] h-[25px] font-['Merriweather'] font-bold text-[20px] leading-[25px] text-center text-black"

@@ -12,7 +12,12 @@ import {
 import { loginAction } from "@/actions/authActions";
 import { LoginAPIResponse } from "@/types/types";
 import { redirect } from "next/navigation";
-import { LoginButton } from "@/components/buttons/button";
+import {
+  LoginButton,
+  GoogleLoginButton,
+  FacebookLoginButton,
+  GitHubLoginButton,
+} from "@/components/buttons/button";
 import { DEFAULT_LOGIN_REDIRECT } from "@/route";
 
 const initialState: LoginAPIResponse = {
@@ -20,6 +25,8 @@ const initialState: LoginAPIResponse = {
   otp: undefined,
   user_id: undefined,
   error: undefined,
+  email: "",
+  password: "",
 };
 
 export default function LoginForm() {
@@ -47,6 +54,7 @@ export default function LoginForm() {
         const token = await window.grecaptcha.enterprise.execute(v3SiteKey, {
           action: "login",
         });
+        console.log("V3 Smart Telemetry token acquired:", token);
         setRecaptchaToken(token);
         lastFetchTimeRef.current = Date.now();
       } catch (error) {
@@ -197,62 +205,72 @@ export default function LoginForm() {
               </span>
             </div>
           )}
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Email
-          </label>
-          <div className="mt-1">
-            <input
-              id="email"
-              name="email"
-              type="email"
-              autoComplete="email"
-              disabled={isPending}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Password
-          </label>
-          <div className="mt-1">
-            <input
-              id="password"
-              name="password"
-              type="password"
-              autoComplete="current-password"
-              disabled={isPending}
-              required
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-            />
-          </div>
-        </div>
-
-        {currentVersion === "v2" && (
-          <div className="flex justify-center my-4">
-            <div id="recaptcha-container"></div>
+        {state && "success" in state && state.success && (
+          <div className="w-full h-[40px] box-border bg-[rgba(63,221,0,0.15)] border-2 border-[#368C04] rounded-[93px] flex items-center justify-center px-4">
+            <span className="font-['Merriweather'] font-normal text-[16px] leading-[20px] text-center text-[#368C04]">
+              {state.success}
+            </span>
           </div>
         )}
+        <div className="flex flex-col gap-[50px]">
+          <div className="flex flex-col gap-[25px]">
+            <div className="w-full h-[42px]">
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                defaultValue={state && "email" in state && state.email ? state.email : ""}
+                disabled={isPending}
+                required
+                placeholder="Email*"
+                className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] font-['Merriweather'] font-normal text-[16px] leading-[20px] text-[#000000] placeholder-[#000000] focus:outline-none"
+              />
+            </div>
 
-        <input type="hidden" name="recaptchaToken" value={recaptchaToken} />
-        <input type="hidden" name="recaptchaVersion" value={currentVersion} />
+            <div className="w-full h-[42px]">
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                disabled={isPending}
+                defaultValue={state && "password" in state && state.password ? state.password : ""}
+                required
+                placeholder="Password*"
+                className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] font-['Merriweather'] font-normal text-[16px] leading-[20px] text-[#000000] placeholder-[#000000] focus:outline-none"
+              />
+              <p className="pl-[20px] pr-[20px] font-['Merriweather'] font-weight-[400] text-[10px] text-[#000000]">
+                Password must be at least 8 characters.
+              </p>
+              <p className="pl-[20px] pr-[20px] font-['Merriweather'] font-weight-[400] text-[10px] text-[#000000]">
+                Must include at least one uppercase letter, one lowercase
+                letter, one number, one special character.
+              </p>
+            </div>
+          </div>
 
-        <LoginButton
-          disabled={
-            isPending ||
-            (currentVersion === "v3" && !recaptchaToken) ||
-            (currentVersion === "v2" && !isV2Verified)
-          }
-        />
+          {currentVersion === "v2" && (
+            <div className="flex justify-center my-4">
+              <div id="recaptcha-container"></div>
+            </div>
+          )}
+
+          <input type="hidden" name="recaptchaToken" value={recaptchaToken} />
+          <input type="hidden" name="recaptchaVersion" value={currentVersion} />
+          <div className="flex flex-col gap-[10px] mt-[10px]">
+            <LoginButton
+              disabled={
+                isPending ||
+                (currentVersion === "v3" && !recaptchaToken) ||
+                (currentVersion === "v2" && !isV2Verified)
+              }
+            />
+            <GoogleLoginButton />
+            <FacebookLoginButton />
+            <GitHubLoginButton />
+          </div>
+        </div>
       </Form>
     </>
   );
