@@ -220,7 +220,9 @@ export default function LoginForm() {
                 name="email"
                 type="email"
                 autoComplete="email"
-                defaultValue={state && "email" in state && state.email ? state.email : ""}
+                defaultValue={
+                  state && "email" in state && state.email ? state.email : ""
+                }
                 disabled={isPending}
                 required
                 placeholder="Email*"
@@ -235,7 +237,11 @@ export default function LoginForm() {
                 type="password"
                 autoComplete="current-password"
                 disabled={isPending}
-                defaultValue={state && "password" in state && state.password ? state.password : ""}
+                defaultValue={
+                  state && "password" in state && state.password
+                    ? state.password
+                    : ""
+                }
                 required
                 placeholder="Password*"
                 className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] font-['Merriweather'] font-normal text-[16px] leading-[20px] text-[#000000] placeholder-[#000000] focus:outline-none"
