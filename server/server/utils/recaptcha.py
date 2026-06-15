@@ -11,19 +11,25 @@ def verify_recaptcha_token(
     """
     project_id = settings.RECAPTCHA_PROJECT_ID
     if recaptcha_version == "v2":
-        recaptcha_site_key = settings.RECAPTCHA_SITE_KEY_V2
+        recaptcha_site_key = (
+            settings.RECAPTCHA_SITE_KEY_V2
+        )  # frontend uses this to generate the recaptcha token
     else:
         recaptcha_site_key = settings.RECAPTCHA_SITE_KEY_V3
 
-    client = recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient()
+    client = (
+        recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient()
+    )  # recaptcha's backend client
 
-    event = recaptchaenterprise_v1.Event()
+    event = recaptchaenterprise_v1.Event()  # we add token, attributes here
     event.site_key = recaptcha_site_key
     event.token = token
     event.user_ip_address = user_ip_address
     event.user_agent = user_agent
 
-    assessment = recaptchaenterprise_v1.Assessment()
+    assessment = (
+        recaptchaenterprise_v1.Assessment()
+    )  # made an assessment object and added event to it, which will be sent to recaptcha's backend for verification
     assessment.event = event
 
     project_name = f"projects/{project_id}"
@@ -32,7 +38,9 @@ def verify_recaptcha_token(
     request.assessment = assessment
     request.parent = project_name
 
-    response = client.create_assessment(request)
+    response = client.create_assessment(
+        request
+    )  # response from recaptcha's backend after verification
 
     if not response.token_properties.valid:
         reason = response.token_properties.invalid_reason
