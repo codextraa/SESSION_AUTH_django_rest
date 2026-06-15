@@ -34,7 +34,6 @@ export async function loginAction(
   prevState: LoginAPIResponse | undefined,
   formData: FormData,
 ): Promise<LoginAPIResponse> {
-  //! keep in mind to send back email and password incase of low v3 score to allow fallback to v2
   const email = formData.get("email");
   const password = formData.get("password");
   const recaptcha_token = formData.get("recaptchaToken");

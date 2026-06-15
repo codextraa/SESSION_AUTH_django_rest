@@ -1,3 +1,11 @@
+export interface SuccessResponse {
+  success: string | undefined;
+}
+
+export interface ErrorResponse {
+  error: string | undefined;
+}
+
 export interface SessionData {
   user_id: string;
   user_role: string;
@@ -8,10 +16,6 @@ export interface SessionData {
 export interface CSRFTokenData {
   csrf_token: string;
   csrf_token_expiry: string;
-}
-
-export interface ErrorResponse {
-  error: string | undefined;
 }
 
 export interface LoginAPIResponseSuccess {
@@ -30,19 +34,13 @@ export type LoginAPIResponse =
   | ErrorResponse
   | LoginData;
 
-export interface reCaptchaVerifyResponseSuccess {
-  success: string | undefined;
-}
-
 export interface reCaptchaTokenData {
   recaptcha_token: string | undefined;
   recaptcha_version: string | undefined;
   expected_action?: string | undefined;
 }
 
-export type reCaptchaVerifyResponse =
-  | reCaptchaVerifyResponseSuccess
-  | ErrorResponse;
+export type reCaptchaVerifyResponse = SuccessResponse | ErrorResponse;
 
 export interface CSRFTokenResponseSuccess {
   csrf_token: string | undefined;
@@ -98,3 +96,45 @@ declare global {
   }
 }
 /* eslint-enable no-unused-vars */
+
+export interface SignUpPasswordErrorResponse {
+  short?: string;
+  lower?: string;
+  upper?: string;
+  number?: string;
+  special?: string;
+}
+
+export interface SignUpErrorResponse {
+  email?: string[] | string;
+  username?: string[] | string;
+  first_name?: string[] | string;
+  last_name?: string[] | string;
+  phone_number?: string[] | string;
+  password?: SignUpPasswordErrorResponse | string;
+  c_password?: string[] | string;
+  global?: string[] | string;
+  errors?: string[] | string;
+}
+
+export interface CreateUserErrorResponse {
+  error: string | SignUpErrorResponse | undefined;
+}
+
+export type CreateUserAPIResponse = SuccessResponse | CreateUserErrorResponse;
+
+export interface CreateUserData {
+  email: string | undefined;
+  username: string | undefined;
+  password: string | undefined;
+  c_password: string | undefined;
+  first_name?: string | undefined;
+  last_name?: string | undefined;
+  phone_number?: string | undefined;
+  is_staff?: boolean | undefined;
+}
+
+export type SignUpFormState =
+  | SuccessResponse
+  | CreateUserErrorResponse
+  | CreateUserData;

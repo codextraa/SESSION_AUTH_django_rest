@@ -5,6 +5,8 @@ import {
   CSRFTokenResponse,
   SessionResponse,
   reCaptchaTokenData,
+  CreateUserData,
+  CreateUserAPIResponse,
 } from "@/types/types";
 
 const HTTPS = process.env.HTTPS === "true";
@@ -43,4 +45,10 @@ export const login = async (
   credentials: reCaptchaTokenData,
 ): Promise<LoginAPIResponse> => {
   return apiClient.post("/recaptcha-verify/", credentials);
+};
+
+export const createUser = async (
+  userData: CreateUserData,
+): Promise<CreateUserAPIResponse> => {
+  return apiClient.post("/users/", userData);
 };
