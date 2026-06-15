@@ -212,6 +212,7 @@ AUTHENTICATION_BACKENDS = (
     # 'social_core.backends.twitter.TwitterOAuth',
     # 'social_core.backends.linkedin.LinkedinOAuth2',
     "social_core.backends.github.GithubOAuth2",
+    "server.backends.CustomAuthBackend",  
     "django.contrib.auth.backends.ModelBackend",
 )
 
