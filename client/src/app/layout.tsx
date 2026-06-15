@@ -20,9 +20,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en">
-      <body className="relative antialiased">
+      <body className="relative">
         <Navbar initialSession={session} initialRole={role} />
-        <main className="pt-20">{children}</main>
+        <main>{children}</main>
       </body>
     </html>
   );
