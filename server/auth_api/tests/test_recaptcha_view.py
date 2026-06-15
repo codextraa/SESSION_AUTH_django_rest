@@ -80,7 +80,8 @@ class RecaptchaValidationViewTests(APITestCase):
         response = self.client.post(self.url, payload, format="json", **self.headers)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Action is required.", response.data["error"])
+        self.assertIn("expected_action", response.data)
+        self.assertEqual(response.data["expected_action"][0], "Action is required.")
 
     def test_missing_recaptcha_token(self):
         """Test 400 bad request when recaptcha_token is missing."""
@@ -90,7 +91,23 @@ class RecaptchaValidationViewTests(APITestCase):
         response = self.client.post(self.url, payload, format="json", **self.headers)
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Missing reCAPTCHA token.", response.data["error"])
+        self.assertIn("recaptcha_token", response.data)
+        self.assertEqual(
+            response.data["recaptcha_token"][0], "Missing reCAPTCHA token."
+        )
+
+    def test_missing_recaptcha_version(self):
+        """Test 400 bad request when recaptcha_version is missing."""
+        payload = self.valid_payload.copy()
+        del payload["recaptcha_version"]
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("recaptcha_version", response.data)
+        self.assertEqual(
+            response.data["recaptcha_version"][0], "Missing reCAPTCHA version."
+        )
 
     def test_missing_user_agent_header(self):
         """Test 400 bad request when HTTP_USER_AGENT header is missing."""
@@ -102,7 +119,8 @@ class RecaptchaValidationViewTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Missing User Agent.", response.data["error"])
+        self.assertIn("user_agent", response.data)
+        self.assertEqual(response.data["user_agent"][0], "Missing User Agent Header.")
 
     def test_missing_user_ip_header(self):
         """Test 400 bad request when IP headers are missing."""
@@ -114,7 +132,8 @@ class RecaptchaValidationViewTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("Missing User IP Address.", response.data["error"])
+        self.assertIn("user_ip", response.data)
+        self.assertEqual(response.data["user_ip"][0], "Missing User IP Address.")
 
     # ==========================================
     # RECAPTCHA FAILURE TESTS (403)
