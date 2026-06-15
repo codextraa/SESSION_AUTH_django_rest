@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+
 class RecaptchaRequestSerializer(serializers.Serializer):  # pylint: disable=W0223
     recaptcha_token = serializers.CharField(
         required=True,
@@ -32,9 +33,8 @@ class RecaptchaRequestSerializer(serializers.Serializer):  # pylint: disable=W02
             "required": "Action is required.",
             "blank": "Action is required.",
             "null": "Action is required.",
-        },    
+        },
     )
-
 
     def validate(self, attrs):
         request = self.context.get("request")
@@ -53,9 +53,7 @@ class RecaptchaRequestSerializer(serializers.Serializer):  # pylint: disable=W02
             "HTTP_X_FORWARDED_FOR", request.META.get("HTTP_X_REAL_IP", "")
         )
         if not user_ip:
-            raise serializers.ValidationError(
-                {"user_ip": "Missing User IP Address."}
-            )
+            raise serializers.ValidationError({"user_ip": "Missing User IP Address."})
 
         if "," in user_ip:
             user_ip = user_ip.split(",")[0].strip()
@@ -72,7 +70,7 @@ class RecaptchaRequestSerializer(serializers.Serializer):  # pylint: disable=W02
 #         help_text="The email or username of the user to log in.",
 #     )
 #     password = serializers.CharField(
-#         required=True, 
+#         required=True,
 #         write_only=True,
 #         help_text="The password of the user to log in.",
 #     )

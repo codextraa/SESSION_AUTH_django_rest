@@ -1,5 +1,6 @@
 from rest_framework import serializers
 
+
 class SuccessResponseSerializer(serializers.Serializer):  # pylint: disable=W0223
     """Standard Success Response structure."""
 
