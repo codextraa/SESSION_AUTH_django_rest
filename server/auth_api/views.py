@@ -1,24 +1,40 @@
 from datetime import datetime, timedelta, timezone
+from django.conf import settings
 from django.middleware.csrf import get_token
-from django.utils.decorators import method_decorator
+from django.core.cache import cache
+from django.contrib.auth import authenticate, login
 from django.views.decorators.csrf import csrf_protect
-from django.contrib.auth import get_user_model, authenticate
-from rest_framework.views import APIView
-from rest_framework.permissions import AllowAny
-from rest_framework.exceptions import ValidationError
-from rest_framework.response import Response
+from django.utils.decorators import method_decorator
 from rest_framework import status
-from drf_spectacular.utils import extend_schema, OpenApiResponse, OpenApiExample
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import AllowAny
+from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.exceptions import ValidationError, Throttled
+from drf_spectacular.utils import (
+    extend_schema,
+    OpenApiResponse,
+    OpenApiExample,
+    PolymorphicProxySerializer,
+)
 
 from server.renderers import ViewRenderer
+from server.utils.exception import ForbiddenValidationError
 from server.utils.recaptcha import verify_recaptcha_token
+from server.utils.encryption import generate_cache_key
+from server.utils.throttles import OTPCooldownThrottle
 from server.schema_serializers import (
     SuccessResponseSerializer,
     ErrorResponseSerializer,
 )
+from .utils import get_user_role, create_otp
 from .validation_serializers import ValidUserSerializer
 from .request_serializers import RecaptchaRequestSerializer, LoginRequestSerializer
-from .response_serializers import CSRFTokenResponseSerializer, OTPSuccessResponse, SessionSuccessResponse
+from .response_serializers import (
+    CSRFTokenResponseSerializer,
+    OTPResponseSerializer,
+    SessionResponseSerializer,
+)
 
 
 class CSRFTokenView(APIView):
@@ -75,7 +91,9 @@ class CSRFTokenView(APIView):
         try:
             csrf_token = get_token(request)
             csrf_token_expiry = (
-                datetime.now(timezone.utc) + timedelta(days=1) - timedelta(minutes=1)
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.CSRF_TOKEN_TTL)
+                - timedelta(seconds=10)
             )
 
             raw_data = {
@@ -223,98 +241,232 @@ class RecaptchaValidationView(APIView):
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 class LoginView(APIView):
     """Login View."""
 
     permission_classes = [AllowAny]
     renderer_classes = [ViewRenderer]
+    throttle_classes = [OTPCooldownThrottle, ScopedRateThrottle]
+    throttle_scope = "email_otp"
 
+    def handle_exception(self, exc):
+        if isinstance(exc, Throttled):
+            return Response(
+                {
+                    "error": (
+                        f"Please wait {exc.wait} seconds before"
+                        " requesting another OTP."
+                    )
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        return super().handle_exception(exc)
 
     @extend_schema(
-        summary="Login to get an OTP",
+        summary="Login to get an OTP or Session ID",
         description=(
-            "Authenticates the user with email and password. "
-            "If valid, an OTP is sent to the registered email."
+            "Authenticates a user via credentials. Handles reCAPTCHA mitigation, "
+            "brute-force account tracking thresholds, and multi-factor conditional logic. "
+            "If 2FA is enabled, issues an active temporary pre-authentication state payload. "
+            "Otherwise, updates explicit anti-CSRF infrastructure and maps active session tokens."
         ),
         request=LoginRequestSerializer,
+        tags=["Authentication"],
         responses={
-            200: OpenApiResponse(
-                description="OTP sent successfully",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "success": {"type": "string", "example": "Email sent"},
-                        "otp": {"type": "boolean", "example": True},
-                        "user_id": {"type": "integer", "example": 1},
-                    },
-                },
+            status.HTTP_200_OK: OpenApiResponse(
+                response=PolymorphicProxySerializer(
+                    component_name="LoginResponse",
+                    serializers=[OTPResponseSerializer, SessionResponseSerializer],
+                    resource_type_field_name=None,
+                ),
+                description=(
+                    "Success Branch Outcomes:\n"
+                    "1. OTP Response (User has 2FA enabled)\n"
+                    "2. Token Response (User has 2FA disabled)"
+                ),
             ),
-            400: OpenApiResponse(
-                description="Bad Request - Various authentication errors",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "errors": {
-                            "type": "array",
-                            "items": {"type": "string"},
-                            "example": [
-                                "Invalid credentials",
-                                (
-                                    "Invalid credentials. You have X more attempt(s) "
-                                    "before your account is deactivated."
-                                ),
-                                (
-                                    "Invalid credentials. Your account is deactivated."
-                                    " Verify your email."
-                                ),
-                                (
-                                    "Invalid credentials. Your account is deactivated."
-                                    " Contact an admin."
-                                ),
-                                "Email and password are required",
-                                (
-                                    "This process cannot be used, "
-                                    "as user is created using {auth_provider}"
-                                ),
-                                "Email is not verified. You must verify your email first",
-                                "Account is deactivated. Contact your admin",
-                                "Something went wrong, could not send OTP. Try again",
-                            ],
-                        }
-                    },
-                },
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Bad Request - Invalid request parameters",
             ),
-            429: OpenApiResponse(
-                description="Too Many Requests - Rate limit exceeded",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "errors": {
-                            "type": "string",
-                            "example": "Request was throttled. Expected available in n seconds.",
-                        }
-                    },
-                },
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Forbidden - reCAPTCHA validation failed",
             ),
-            500: OpenApiResponse(
-                description="Internal Server Error",
-                response={
-                    "type": "object",
-                    "properties": {
-                        "errors": {"type": "string", "example": "Internal Server Error"}
-                    },
-                },
+            status.HTTP_424_FAILED_DEPENDENCY: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Failed Dependency - OTP not sent",
+            ),
+            status.HTTP_429_TOO_MANY_REQUESTS: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Too Many Requests",
+            ),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Internal Server Error.",
             ),
         },
+        examples=[
+            OpenApiExample(
+                name="OTP Success (2FA Enabled)",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "success": "True",
+                    "pre_auth_token": "kdslfjs0f9ujse8fhse8fs-PRE-AUTH-TOKEN",
+                },
+            ),
+            OpenApiExample(
+                name="Token Success (2FA Disabled)",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "sessionid": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-SESSIONID",
+                    "session_token_expiry": "2026-06-17T12:34:56.789Z",
+                    "user_id": 42,
+                    "user_role": "Default",
+                    "csrf_token": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-CSRFTOKEN",
+                    "csrf_token_expiry": "2026-06-18T12:34:56.789Z",
+                },
+            ),
+            OpenApiExample(
+                name="Missing email or username",
+                response_only=True,
+                status_codes=["400"],
+                value={
+                    "errors": {"email_or_username": ["Email or username is required."]}
+                },
+            ),
+            OpenApiExample(
+                name="Missing Password",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"password": ["Password is required."]}},
+            ),
+            OpenApiExample(
+                name="Missing reCAPTCHA Token",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"recaptcha_token": ["Missing reCAPTCHA token."]}},
+            ),
+            OpenApiExample(
+                name="Missing reCAPTCHA Version",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"recaptcha_version": ["Missing reCAPTCHA version."]}},
+            ),
+            OpenApiExample(
+                name="Missing User Agent",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"user_agent": ["Missing User Agent Header."]}},
+            ),
+            OpenApiExample(
+                name="Missing User IP Address",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"user_ip": ["Missing User IP Address."]}},
+            ),
+            OpenApiExample(
+                name="Invalid Credentials",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": "Invalid credentials"},
+            ),
+            OpenApiExample(
+                name="Account Warning Limit (Attempts 3 or 4)",
+                response_only=True,
+                status_codes=["400"],
+                value={
+                    "error": (
+                        "Invalid credentials. You have 2 more "
+                        "attempt(s) before your account is deactivated."
+                    )
+                },
+            ),
+            OpenApiExample(
+                name="Max Attempts Hit (Lockout)",
+                response_only=True,
+                status_codes=["400"],
+                value={
+                    "error": (
+                        "Invalid credentials. Your account has "
+                        "been deactivated. Contact an admin."
+                    )
+                },
+            ),
+            OpenApiExample(
+                name="Invalid reCAPTCHA Token",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Invalid token reason: Invalid"},
+            ),
+            OpenApiExample(
+                name="Action Mismatch",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Action mismatch. Expected 'login', got 'signup'"},
+            ),
+            OpenApiExample(
+                name="Low Score",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "High risk transaction blocked. Score: 0.3"},
+            ),
+            OpenApiExample(
+                name="Deactivated Account Check",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Account has been deactivated. Contact your admin"},
+            ),
+            OpenApiExample(
+                name="Unverified Email Check",
+                response_only=True,
+                status_codes=["403"],
+                value={
+                    "error": "Email is not verified. You must verify your email first"
+                },
+            ),
+            OpenApiExample(
+                name="OAuth Provider Mismatch",
+                response_only=True,
+                status_codes=["403"],
+                value={
+                    "error": "This process cannot be used, as user is created using google"
+                },
+            ),
+            OpenApiExample(
+                name="OTP Internal Transmit Failure",
+                response_only=True,
+                status_codes=["424"],
+                value={"error": "Something went wrong, could not send OTP. Try again"},
+            ),
+            OpenApiExample(
+                name="Throttled Wait Penalty",
+                response_only=True,
+                status_codes=["429"],
+                value={
+                    "error": "Please wait 45 seconds before requesting another OTP."
+                },
+            ),
+            OpenApiExample(
+                name="Internal Server Error",
+                response_only=True,
+                status_codes=["500"],
+                value={"error": "Internal Server Error"},
+            ),
+        ],
     )
     @method_decorator(csrf_protect)
-    def post(self, request, *args, **kwargs):  # pylint: disable=R0911
-        """Post a request to login. Returns an OTP or seesion id to the registered email."""
+    def post(self, request, *args, **kwargs):  # pylint: disable=R0911, R0914
+        """Post a request to login. Returns an OTP or SessionID to the registered email."""
         try:
             req_serializer = LoginRequestSerializer(
-                data=request.data,
-                context={"request": request},
+                data=request.data, context={"request": request}
             )
+
             req_serializer.is_valid(raise_exception=True)
 
             req_validated_data = req_serializer.validated_data
@@ -328,7 +480,10 @@ class LoginView(APIView):
             )
 
             if not is_human:
-                return Response({"error": message}, status=status.HTTP_403_FORBIDDEN)
+                return Response(
+                    {"error": message},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
             user = authenticate(
                 request=request,
@@ -337,99 +492,66 @@ class LoginView(APIView):
             )
 
             valid_serializer = ValidUserSerializer(
-                data={},
-                context={"user": user},
+                data={}, context={"user": user, "request": request}
             )
+
             valid_serializer.is_valid(raise_exception=True)
 
             validated_user = valid_serializer.validated_data["user"]
 
             if validated_user.is_two_fa:
-                pass
-            else:
-                pass
-            
-            # email = request.data.get("email")
-            # password = request.data.get("password")
+                otp_success = create_otp(user.id)
+                if not otp_success.get("success"):
+                    return Response(
+                        {
+                            "error": "Something went wrong, could not send OTP. Try again"
+                        },
+                        status=status.HTTP_424_FAILED_DEPENDENCY,
+                    )
 
-            # if not email or not password:
-            #     return Response(
-            #         {"error": "Email and password are required"},
-            #         status=status.HTTP_400_BAD_REQUEST,
-            #     )
+                otp_res_serializer = OTPResponseSerializer(data=otp_success)
 
-            # user = check_user_validity(email)
+                otp_res_serializer.is_valid(raise_exception=True)
 
-            # if isinstance(user, Response):
-            #     return user
+                hashed_user_key = generate_cache_key(validated_user.id)
+                cache.delete(f"login_failures:{hashed_user_key}")
 
-            # # Check if password is correct
-            # if not user.check_password(password):
-            #     # Increment failed login attempts
-            #     if now() - user.last_failed_login_time <= timedelta(minutes=10):
-            #         user.failed_login_attempts += 1
-            #     else:
-            #         user.failed_login_attempts = 1
+                return Response(otp_res_serializer.data, status=status.HTTP_200_OK)
 
-            #     user.last_failed_login_time = now()
-            #     user.save()
+            login(request, validated_user)
+            sessionid = request.session.session_key
+            session_token_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.SESSION_COOKIE_TTL)
+                - timedelta(seconds=10)
+            ).isoformat()
 
-            #     if user.failed_login_attempts == settings.MAX_LOGIN_FAILURE_LIMIT:
-            #         # Lock account
-            #         if user.is_superuser:
-            #             user.is_email_verified = False
-            #             user.save()
-            #             return Response(
-            #                 {
-            #                     "error": (
-            #                         "Invalid credentials. Your account is deactivated. "
-            #                         "Verify your email."
-            #                     )
-            #                 },
-            #                 status=status.HTTP_400_BAD_REQUEST,
-            #             )
-            #         user.is_active = False
-            #         user.save()
-            #         return Response(
-            #             {
-            #                 "error": (
-            #                     "Invalid credentials. Your account is deactivated. "
-            #                     "Contact an admin."
-            #                 )
-            #             },
-            #             status=status.HTTP_400_BAD_REQUEST,
-            #         )
+            csrf_token = get_token(request)
+            csrf_token_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.CSRF_TOKEN_TTL)
+                - timedelta(seconds=10)
+            )
 
-            #     if user.failed_login_attempts >= 3:
-            #         remaining_attempts = (
-            #             settings.MAX_LOGIN_FAILURE_LIMIT - user.failed_login_attempts
-            #         )
-            #         return Response(
-            #             {
-            #                 "error": (
-            #                     f"Invalid credentials. You have {remaining_attempts} "
-            #                     "more attempt(s) before your account is deactivated."
-            #                 )
-            #             },
-            #             status=status.HTTP_400_BAD_REQUEST,
-            #         )
+            raw_data = {
+                "sessionid": sessionid,
+                "session_token_expiry": session_token_expiry,
+                "user_id": validated_user.id,
+                "user_role": get_user_role(validated_user),
+                "csrf_token": csrf_token,
+                "csrf_token_expiry": csrf_token_expiry,
+            }
 
-            #     return Response(
-            #         {"error": "Invalid credentials"}, status=status.HTTP_400_BAD_REQUEST
-            #     )
+            token_res_serializer = SessionResponseSerializer(data=raw_data)
 
-            # # Reset failed login attempts
-            # if user.failed_login_attempts > 0:
-            #     user.failed_login_attempts = 0
-            #     user.save()
+            token_res_serializer.is_valid(raise_exception=True)
 
-            # # Generate OTP
-            # response = create_otp(user.id, email, password)
+            hashed_user_key = generate_cache_key(validated_user.id)
+            cache.delete(f"login_failures:{hashed_user_key}")
 
-            # return response
-
+            return Response(token_res_serializer.data, status=status.HTTP_200_OK)
         except Exception as e:  # pylint: disable=W0718
-            if isinstance(e, ValidationError):
+            if isinstance(e, (ValidationError, ForbiddenValidationError)):
                 raise e
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
