@@ -21,6 +21,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.getenv("SECRET_KEY", "XXXXXX")
+ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG")
@@ -212,6 +213,7 @@ AUTHENTICATION_BACKENDS = (
     # 'social_core.backends.twitter.TwitterOAuth',
     # 'social_core.backends.linkedin.LinkedinOAuth2',
     "social_core.backends.github.GithubOAuth2",
+    "server.backends.CustomAuthBackend",
     "django.contrib.auth.backends.ModelBackend",
 )
 
@@ -283,10 +285,10 @@ REST_FRAMEWORK = {
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
     "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
     "DEFAULT_THROTTLE_RATES": {
-        "email_otp": "1/min",
-        "email_verify": "1/min",
-        "password_reset": "1/min",
-        "phone_otp": "1/min",
+        "email_otp": "15/min",
+        "email_verify": "15/min",
+        "password_reset": "15/min",
+        "phone_otp": "15/min",
     },
     "ORDERING_PARAM": "ordering",
 }
@@ -312,7 +314,7 @@ SPECTACULAR_SETTINGS = {
                 "type": "apiKey",
                 "in": "header",
                 "name": "NEXT-X-API-KEY",
-                "description": "NEXT JS Frontend API Key (required alongside JWT)",
+                "description": "NEXT JS Frontend API Key (required alongside Session)",
             },
             "SessionAuth": {
                 "type": "apiKey",
@@ -330,11 +332,19 @@ SPECTACULAR_SETTINGS = {
     },
 }
 
+# Time to Live (TTL) in seconds
+
+SESSION_COOKIE_TTL = 24 * 60 * 60 + 10  # 1 day and 10 seconds
+CSRF_TOKEN_TTL = 24 * 60 * 60 + 10  # 1 day and 10 seconds
+OTP_TTL = 10 * 60  # 10 minutes
+OTP_COOLDOWN_TTL = 60  # 1 minute
+LOGIN_FAILURE_ATTEMPT_TTL = 60 * 60  # 1 hour
+
 # Session Settings
 
 SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_AGE = 60 * 60 * 24  # 1 day
+SESSION_COOKIE_AGE = SESSION_COOKIE_TTL  # 1 day and 10 seconds
 SESSION_COOKIE_SAME_SITE = "Lax"
 SESSION_COOKIE_SECURE = True  # Secure session cookies
 SESSION_CACHE_ALIAS = "default"
@@ -356,7 +366,7 @@ CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "http://localhost:3000"
 CSRF_COOKIE_SECURE = True  # Ensures the CSRF cookie is sent only over HTTPS
 CSRF_COOKIE_HTTPONLY = True  # Must be False since JavaScript needs to read the token
 CSRF_COOKIE_SAMESITE = "Lax"  # Prevent cross-origin requests
-CSRF_COOKIE_AGE = 60 * 60 * 24  # 1 day
+CSRF_COOKIE_AGE = CSRF_TOKEN_TTL  # 1 day and 10 seconds
 
 # Session Settings
 
