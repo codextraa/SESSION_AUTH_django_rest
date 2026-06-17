@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
     RECAPTCHA_SITE_KEY_V2="test-site-key-v2",
     RECAPTCHA_SITE_KEY_V3="test-site-key-v3",
 )
-class RecaptchaValidationViewTests(APITestCase):
+class RecaptchaViewTests(APITestCase):
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
@@ -83,6 +83,22 @@ class RecaptchaValidationViewTests(APITestCase):
         self.assertIn("expected_action", response.data)
         self.assertEqual(response.data["expected_action"][0], "Action is required.")
 
+        payload["expected_action"] = None
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("expected_action", response.data)
+        self.assertEqual(response.data["expected_action"][0], "Action is required.")
+
+        payload["expected_action"] = ""
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("expected_action", response.data)
+        self.assertEqual(response.data["expected_action"][0], "Action is required.")
+
     def test_missing_recaptcha_token(self):
         """Test 400 bad request when recaptcha_token is missing."""
         payload = self.valid_payload.copy()
@@ -96,10 +112,50 @@ class RecaptchaValidationViewTests(APITestCase):
             response.data["recaptcha_token"][0], "Missing reCAPTCHA token."
         )
 
+        payload["recaptcha_token"] = None
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("recaptcha_token", response.data)
+        self.assertEqual(
+            response.data["recaptcha_token"][0], "Missing reCAPTCHA token."
+        )
+
+        payload["recaptcha_token"] = ""
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("recaptcha_token", response.data)
+        self.assertEqual(
+            response.data["recaptcha_token"][0], "Missing reCAPTCHA token."
+        )
+
     def test_missing_recaptcha_version(self):
         """Test 400 bad request when recaptcha_version is missing."""
         payload = self.valid_payload.copy()
         del payload["recaptcha_version"]
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("recaptcha_version", response.data)
+        self.assertEqual(
+            response.data["recaptcha_version"][0], "Missing reCAPTCHA version."
+        )
+
+        payload["recaptcha_version"] = None
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("recaptcha_version", response.data)
+        self.assertEqual(
+            response.data["recaptcha_version"][0], "Missing reCAPTCHA version."
+        )
+
+        payload["recaptcha_version"] = ""
 
         response = self.client.post(self.url, payload, format="json", **self.headers)
 
@@ -134,6 +190,56 @@ class RecaptchaValidationViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("user_ip", response.data)
         self.assertEqual(response.data["user_ip"][0], "Missing User IP Address.")
+
+    # ==========================================
+    # REQUEST SERIALIZER IP REPLACEMENT (400)
+    # ==========================================
+
+    @patch(
+        "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
+    )
+    def test_ip_parsing_with_x_forwarded_for_single(self, mock_client_class):
+        """
+        Serializer validation passes and extracts a single IP from HTTP_X_FORWARDED_FOR.
+        """
+        mock_client_instance = mock_client_class.return_value
+        mock_response = self.create_mock_recaptcha_response(
+            valid=True, action="login", score=0.9
+        )
+        mock_client_instance.create_assessment.return_value = mock_response
+
+        headers = self.headers.copy()
+        del headers["HTTP_X_REAL_IP"]
+        headers["HTTP_X_FORWARDED_FOR"] = "172.16.254.1"
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **headers
+        )
+
+        self.assertNotIn("user_ip", response.data)
+
+    @patch(
+        "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
+    )
+    def test_ip_parsing_with_x_forwarded_for_comma_chain(self, mock_client_class):
+        """
+        Serializer split logic should isolate the first IP in an HTTP_X_FORWARDED_FOR proxy chain.
+        """
+        mock_client_instance = mock_client_class.return_value
+        mock_response = self.create_mock_recaptcha_response(
+            valid=True, action="login", score=0.9
+        )
+        mock_client_instance.create_assessment.return_value = mock_response
+
+        headers = self.headers.copy()
+        del headers["HTTP_X_REAL_IP"]
+        headers["HTTP_X_FORWARDED_FOR"] = "192.168.1.50, 10.0.0.1, 127.0.0.1"
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **headers
+        )
+
+        self.assertNotIn("user_ip", response.data)
 
     # ==========================================
     # RECAPTCHA FAILURE TESTS (403)
