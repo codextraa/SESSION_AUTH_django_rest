@@ -1,63 +1,8 @@
 from rest_framework import serializers
+from server.schema_serializers import BaseRecaptchaSerializer
 
 
-class BaseRecaptchaSerializer(serializers.Serializer):  # pylint: disable=W0223
-    """
-    Base serializer for handling reCAPTCHA tokens and request context validation.
-    """
-
-    recaptcha_token = serializers.CharField(
-        required=True,
-        allow_null=False,
-        allow_blank=False,
-        help_text="The Recaptcha token to be used in subsequent requests.",
-        error_messages={
-            "required": "Missing reCAPTCHA token.",
-            "blank": "Missing reCAPTCHA token.",
-            "null": "Missing reCAPTCHA token.",
-        },
-    )
-    recaptcha_version = serializers.CharField(
-        required=True,
-        allow_null=False,
-        allow_blank=False,
-        help_text="The Recaptcha version to be used in subsequent requests.",
-        error_messages={
-            "required": "Missing reCAPTCHA version.",
-            "blank": "Missing reCAPTCHA version.",
-            "null": "Missing reCAPTCHA version.",
-        },
-    )
-
-    def validate(self, attrs):
-        request = self.context.get("request")
-        if not request:
-            raise serializers.ValidationError(
-                {"error": "Internal server context error."}
-            )
-
-        user_agent = request.META.get("HTTP_USER_AGENT", "")
-        if not user_agent:
-            raise serializers.ValidationError(
-                {"user_agent": "Missing User Agent Header."}
-            )
-
-        user_ip = request.META.get(
-            "HTTP_X_FORWARDED_FOR", request.META.get("HTTP_X_REAL_IP", "")
-        )
-        if not user_ip:
-            raise serializers.ValidationError({"user_ip": "Missing User IP Address."})
-
-        if "," in user_ip:
-            user_ip = user_ip.split(",")[0].strip()
-
-        attrs["user_agent"] = user_agent
-        attrs["user_ip"] = user_ip
-
-        return attrs
-
-
-class RecaptchaRequestSerializer(BaseRecaptchaSerializer):
+class RecaptchaRequestSerializer(BaseRecaptchaSerializer):  # pylint: disable=W0223
     """
     Extends the base reCAPTCHA serializer to include the expected_action field.
     """
@@ -75,7 +20,7 @@ class RecaptchaRequestSerializer(BaseRecaptchaSerializer):
     )
 
 
-class LoginRequestSerializer(BaseRecaptchaSerializer):
+class LoginRequestSerializer(BaseRecaptchaSerializer):  # pylint: disable=W0223
     """
     Handles Login credentials AND inherits the base reCAPTCHA validations/fields.
     """
