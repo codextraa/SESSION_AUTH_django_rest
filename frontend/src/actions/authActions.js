@@ -70,6 +70,7 @@ export async function loginAction(formData) {
   }
 }
 
+
 export async function verifyOtpAction(formData) {
   const otp_data = formData.get("otp");
   const user_id = formData.get("user_id");

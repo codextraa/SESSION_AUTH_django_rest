@@ -20,7 +20,15 @@ export interface LoginAPIResponseSuccess {
   user_id: number | undefined;
 }
 
-export type LoginAPIResponse = LoginAPIResponseSuccess | ErrorResponse;
+export interface LoginData {
+  email: string;
+  password: string;
+}
+
+export type LoginAPIResponse =
+  | LoginAPIResponseSuccess
+  | ErrorResponse
+  | LoginData;
 
 export interface reCaptchaVerifyResponseSuccess {
   success: string | undefined;
