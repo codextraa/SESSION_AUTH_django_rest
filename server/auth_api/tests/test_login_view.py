@@ -420,7 +420,7 @@ class LoginViewDBTests(APITestCase):
         "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
     )
     def test_login_with_2fa_disabled_success(self, mock_recaptcha):
-        """Test that a user with 2FA disabled directly receives JWT access/refresh tokens and resets failure cache."""
+        """Test that a user with 2FA disabled directly receives session id and resets failure cache."""
         mock_recaptcha.return_value.create_assessment.return_value = (
             self.create_mock_recaptcha_response()
         )

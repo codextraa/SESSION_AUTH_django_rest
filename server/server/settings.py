@@ -314,7 +314,7 @@ SPECTACULAR_SETTINGS = {
                 "type": "apiKey",
                 "in": "header",
                 "name": "NEXT-X-API-KEY",
-                "description": "NEXT JS Frontend API Key (required alongside JWT)",
+                "description": "NEXT JS Frontend API Key (required alongside Session)",
             },
             "SessionAuth": {
                 "type": "apiKey",
