@@ -49,7 +49,12 @@ export function ActionNavButton({
   );
 }
 
-export function LoginButton({ disabled }: { disabled: boolean }) {
+interface FormButtonProps {
+  disabled: boolean;
+  mode: "login" | "signup"; // String literal types to avoid any accidental text input errors
+}
+
+export function FormButton({ disabled, mode }: FormButtonProps) {
   const { pending } = useFormStatus();
   const isPending = pending || false;
 
@@ -60,7 +65,13 @@ export function LoginButton({ disabled }: { disabled: boolean }) {
       className="w-full h-[45px] bg-[#263775] rounded-[37px] transition-all hover:opacity-90 disabled:opacity-50 active:scale-[0.99] cursor-pointer flex items-center justify-center"
     >
       <span className="font-['Merriweather'] font-bold text-[18px] leading-[23px] text-[#E7E7E7]">
-        {isPending ? "Checking..." : "Login"}
+        {isPending
+          ? mode === "login"
+            ? "Checking..."
+            : "Signing up..."
+          : mode === "login"
+            ? "Login"
+            : "Sign Up"}
       </span>
     </button>
   );

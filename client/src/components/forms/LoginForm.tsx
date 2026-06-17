@@ -2,6 +2,7 @@
 
 import Form from "next/form";
 import Script from "next/script";
+import Link from "next/link";
 import {
   useActionState,
   useState,
@@ -13,7 +14,7 @@ import { loginAction } from "@/actions/authActions";
 import { LoginAPIResponse } from "@/types/types";
 import { redirect } from "next/navigation";
 import {
-  LoginButton,
+  FormButton,
   GoogleLoginButton,
   FacebookLoginButton,
   GitHubLoginButton,
@@ -54,14 +55,13 @@ export default function LoginForm() {
         const token = await window.grecaptcha.enterprise.execute(v3SiteKey, {
           action: "login",
         });
-        console.log("V3 Smart Telemetry token acquired:", token);
         setRecaptchaToken(token);
         lastFetchTimeRef.current = Date.now();
       } catch (error) {
         console.error("V3 Smart Telemetry execution failed:", error);
       }
     });
-  }, [v3SiteKey, currentVersion]); // Memory reference will only update if these two values change
+  }, [v3SiteKey, currentVersion]);
 
   if (state && "success" in state && state.success) {
     console.log(state.success);
@@ -265,16 +265,26 @@ export default function LoginForm() {
           <input type="hidden" name="recaptchaToken" value={recaptchaToken} />
           <input type="hidden" name="recaptchaVersion" value={currentVersion} />
           <div className="flex flex-col gap-[10px] mt-[10px]">
-            <LoginButton
+            <FormButton
               disabled={
                 isPending ||
                 (currentVersion === "v3" && !recaptchaToken) ||
                 (currentVersion === "v2" && !isV2Verified)
               }
+              mode="login"
             />
             <GoogleLoginButton />
             <FacebookLoginButton />
             <GitHubLoginButton />
+          </div>
+          <div className="w-full text-center font-['Merriweather'] text-[15px] text-[#000000]">
+            Want to create an account?{" "}
+            <Link
+              href="/auth/signup"
+              className="font-bold underline hover:opacity-80"
+            >
+              Sign Up
+            </Link>
           </div>
         </div>
       </Form>
