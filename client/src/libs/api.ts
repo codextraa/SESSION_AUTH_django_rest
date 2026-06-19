@@ -1,10 +1,8 @@
 import { ApiClient } from "./apiClient";
 import {
-  LoginAPIResponse,
-  reCaptchaVerifyResponse,
+  LoginInput,
   CSRFTokenResponse,
   SessionResponse,
-  reCaptchaTokenData,
   CreateUserData,
   CreateUserAPIResponse,
 } from "@/types/types";
@@ -21,18 +19,18 @@ const API_URL = HTTPS
 const apiClient = new ApiClient(API_URL || "");
 
 export const getCSRFToken = async (): Promise<CSRFTokenResponse> => {
-  return apiClientOld.get("/get-csrf-token/");
+  return apiClient.get("/get-csrf-token/");
 };
 
 export const refreshSession = async (): Promise<SessionResponse> => {
   return apiClientOld.post("/session/refresh/", {});
 };
 
-export const reCaptchaVerify = async (
-  data: reCaptchaTokenData,
-): Promise<reCaptchaVerifyResponse> => {
-  return apiClientOld.post("/recaptcha-verify/", data);
-};
+// export const reCaptchaVerify = async (
+//   data: reCaptchaTokenData,
+// ): Promise<reCaptchaVerifyResponse> => {
+//   return apiClientOld.post("/recaptcha-verify/", data);
+// }; // not need now
 
 // export const login = async (credentials: {
 //   email: string;
@@ -42,9 +40,9 @@ export const reCaptchaVerify = async (
 // };
 
 export const login = async (
-  credentials: reCaptchaTokenData,
-): Promise<LoginAPIResponse> => {
-  return apiClient.post("/recaptcha-verify/", credentials);
+  credentials: LoginInput,
+): Promise<SessionResponse> => {
+  return apiClient.post("/login/", credentials);
 };
 
 export const createUser = async (

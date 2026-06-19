@@ -449,7 +449,7 @@ class LoginViewDBTests(APITestCase):
 
         expected_keys = [
             "sessionid",
-            "session_token_expiry",
+            "session_expiry",
             "user_id",
             "user_role",
             "csrf_token",

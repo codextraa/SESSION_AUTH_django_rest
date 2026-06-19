@@ -324,7 +324,7 @@ class LoginView(APIView):
                 status_codes=["200"],
                 value={
                     "sessionid": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-SESSIONID",
-                    "session_token_expiry": "2026-06-17T12:34:56.789Z",
+                    "session_expiry": "2026-06-17T12:34:56.789Z",
                     "user_id": 42,
                     "user_role": "Default",
                     "csrf_token": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-CSRFTOKEN",
@@ -471,19 +471,19 @@ class LoginView(APIView):
 
             req_validated_data = req_serializer.validated_data
 
-            is_human, message = verify_recaptcha_token(
-                token=req_validated_data["recaptcha_token"],
-                expected_action="login",
-                recaptcha_version=req_validated_data["recaptcha_version"],
-                user_ip_address=req_validated_data["user_ip"],
-                user_agent=req_validated_data["user_agent"],
-            )
+            # is_human, message = verify_recaptcha_token(
+            #     token=req_validated_data["recaptcha_token"],
+            #     expected_action="login",
+            #     recaptcha_version=req_validated_data["recaptcha_version"],
+            #     user_ip_address=req_validated_data["user_ip"],
+            #     user_agent=req_validated_data["user_agent"],
+            # )
 
-            if not is_human:
-                return Response(
-                    {"error": message},
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+            # if not is_human:
+            #     return Response(
+            #         {"error": message},
+            #         status=status.HTTP_403_FORBIDDEN,
+            #     )
 
             user = authenticate(
                 request=request,
@@ -520,7 +520,7 @@ class LoginView(APIView):
 
             login(request, validated_user)
             sessionid = request.session.session_key
-            session_token_expiry = (
+            session_expiry = (
                 datetime.now(timezone.utc)
                 + timedelta(seconds=settings.SESSION_COOKIE_TTL)
                 - timedelta(seconds=10)
@@ -535,7 +535,7 @@ class LoginView(APIView):
 
             raw_data = {
                 "sessionid": sessionid,
-                "session_token_expiry": session_token_expiry,
+                "session_expiry": session_expiry,
                 "user_id": validated_user.id,
                 "user_role": get_user_role(validated_user),
                 "csrf_token": csrf_token,
