@@ -106,7 +106,6 @@ export async function loginAction(
     };
   }
 
-  console.log("password: ", password);
   const credentials = {
     email_or_username: email_or_username,
     password: password,
@@ -120,8 +119,8 @@ export async function loginAction(
     if (response && "error" in response && response.error) {
       if (
         typeof response.error === "string" &&
-        response.error.includes("Score") &&
-        recaptcha_version === "v3"
+        recaptcha_version === "v3" &&
+        response.error.includes("reCAPTCHA validation failed")
       ) {
         return {
           success: "",
@@ -134,7 +133,6 @@ export async function loginAction(
         };
       } else {
         const errorResponse = await userError(response);
-        console.log("errorResponse: ", errorResponse);
         return {
           success: "",
           pre_auth_token: false,
@@ -168,7 +166,7 @@ export async function loginAction(
       typeof response.session_expiry === "string" &&
       "user_id" in response &&
       response.user_id &&
-      typeof response.user_id === "string" &&
+      typeof response.user_id === "number" &&
       "user_role" in response &&
       response.user_role &&
       typeof response.user_role === "string" &&

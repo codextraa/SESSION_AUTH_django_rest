@@ -66,10 +66,10 @@ export default function LoginForm() {
     state &&
     "success" in state &&
     state.success &&
-    "pre_auth_token" in state &&
-    state.pre_auth_token
+    "pre_auth_token" in state
   ) {
     if (state.pre_auth_token) {
+      //! eslint gives error fix it
       sessionStorage.setItem("otpExpiry", (Date.now() + 600000).toString());
       redirect("/auth/otp");
     } else {
@@ -113,7 +113,7 @@ export default function LoginForm() {
           typeof state.error === "object" &&
           "recaptcha_token" in state.error &&
           typeof state.error.recaptcha_token === "string" &&
-          state.error.recaptcha_token.includes("Score")
+          state.error.recaptcha_token.includes("reCAPTCHA validation failed")
         ) {
           setIsFallback(true);
         } else {

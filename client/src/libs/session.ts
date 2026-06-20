@@ -1,10 +1,10 @@
 import {
   SessionData,
+  PreAuthData,
   CSRFTokenData,
   CSRFTokenResponseSuccess,
   SessionResponseSuccess,
   PreAuthResponseSuccess,
-  PreAuthData,
 } from "@/types/types";
 
 const ALGORITHM = "AES-GCM";

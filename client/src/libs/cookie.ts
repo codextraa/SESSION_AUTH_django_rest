@@ -11,13 +11,13 @@ import {
 import { getCSRFToken, refreshSession } from "./api";
 import {
   SessionData,
+  PreAuthData,
   CSRFTokenData,
   CSRFTokenResponse,
   CSRFTokenResponseSuccess,
   SessionResponse,
   SessionResponseSuccess,
   PreAuthResponseSuccess,
-  PreAuthData,
 } from "@/types/types";
 
 export const setSessionCookie = async (
@@ -192,11 +192,11 @@ export const deleteSessionCookie = async (): Promise<void> => {
   }
 };
 
-export const deleteCSRFCookie = async (): Promise<void> => {
+export const deletePreAuthCookie = async (): Promise<void> => {
   const cookieStore = await cookies();
 
-  if (cookieStore.has("__Secure-csrfToken")) {
-    cookieStore.set("__Secure-csrfToken", "", {
+  if (cookieStore.has("__Secure-preAuthToken")) {
+    cookieStore.set("__Secure-preAuthToken", "", {
       httpOnly: true,
       secure: process.env.HTTPS === "true", // Secure in production
       maxAge: 0, // Expire the cookie immediately
@@ -206,11 +206,11 @@ export const deleteCSRFCookie = async (): Promise<void> => {
   }
 };
 
-export const deletePreAuthCookie = async (): Promise<void> => {
+export const deleteCSRFCookie = async (): Promise<void> => {
   const cookieStore = await cookies();
 
-  if (cookieStore.has("__Secure-preAuthToken")) {
-    cookieStore.set("__Secure-preAuthToken", "", {
+  if (cookieStore.has("__Secure-csrfToken")) {
+    cookieStore.set("__Secure-csrfToken", "", {
       httpOnly: true,
       secure: process.env.HTTPS === "true", // Secure in production
       maxAge: 0, // Expire the cookie immediately
