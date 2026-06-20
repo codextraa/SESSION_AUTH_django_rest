@@ -19,7 +19,7 @@ from drf_spectacular.utils import (
 )
 
 from server.renderers import ViewRenderer
-from server.utils.exception import ForbiddenValidationError
+from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
 from server.utils.recaptcha import verify_recaptcha_token
 from server.utils.encryption import generate_cache_key
 from server.utils.throttles import OTPCooldownThrottle
@@ -196,7 +196,7 @@ class RecaptchaValidationView(APIView):
                 name="Low Score",
                 response_only=True,
                 status_codes=["403"],
-                value={"error": "High risk transaction blocked. Score: 0.3"},
+                value={"error": "reCAPTCHA validation failed."},
             ),
             OpenApiExample(
                 name="Internal Server Error",
@@ -235,7 +235,7 @@ class RecaptchaValidationView(APIView):
                 status=status.HTTP_200_OK,
             )
         except Exception as e:  # pylint: disable=W0718
-            if isinstance(e, ValidationError):
+            if isinstance(e, (ValidationError, BadRequestValidationError)):
                 raise e
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -309,6 +309,27 @@ class LoginView(APIView):
             ),
         },
         examples=[
+            OpenApiExample(
+                name="Superuser Login Request Example",
+                value={
+                    "email": "superuser@example.com",
+                    "password": "Django@123",
+                },
+            ),
+            OpenApiExample(
+                name="Staff Login Request Example",
+                value={
+                    "email": "staffuser@example.com",
+                    "password": "Django@123",
+                },
+            ),
+            OpenApiExample(
+                name="Default User Login Request Example",
+                value={
+                    "email": "defaultuser@example.com",
+                    "password": "Django@123",
+                },
+            ),
             OpenApiExample(
                 name="OTP Success (2FA Enabled)",
                 response_only=True,
@@ -413,7 +434,7 @@ class LoginView(APIView):
                 name="Low Score",
                 response_only=True,
                 status_codes=["403"],
-                value={"error": "High risk transaction blocked. Score: 0.3"},
+                value={"error": "reCAPTCHA validation failed."},
             ),
             OpenApiExample(
                 name="Deactivated Account Check",
@@ -471,19 +492,19 @@ class LoginView(APIView):
 
             req_validated_data = req_serializer.validated_data
 
-            # is_human, message = verify_recaptcha_token(
-            #     token=req_validated_data["recaptcha_token"],
-            #     expected_action="login",
-            #     recaptcha_version=req_validated_data["recaptcha_version"],
-            #     user_ip_address=req_validated_data["user_ip"],
-            #     user_agent=req_validated_data["user_agent"],
-            # )
+            is_human, message = verify_recaptcha_token(
+                token=req_validated_data["recaptcha_token"],
+                expected_action="login",
+                recaptcha_version=req_validated_data["recaptcha_version"],
+                user_ip_address=req_validated_data["user_ip"],
+                user_agent=req_validated_data["user_agent"],
+            )
 
-            # if not is_human:
-            #     return Response(
-            #         {"error": message},
-            #         status=status.HTTP_403_FORBIDDEN,
-            #     )
+            if not is_human:
+                return Response(
+                    {"error": message},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
             user = authenticate(
                 request=request,
@@ -551,7 +572,10 @@ class LoginView(APIView):
 
             return Response(token_res_serializer.data, status=status.HTTP_200_OK)
         except Exception as e:  # pylint: disable=W0718
-            if isinstance(e, (ValidationError, ForbiddenValidationError)):
+            if isinstance(
+                e,
+                (ValidationError, BadRequestValidationError, ForbiddenValidationError),
+            ):
                 raise e
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR

@@ -1,5 +1,8 @@
+import logging
 from django.conf import settings
 from google.cloud import recaptchaenterprise_v1
+
+logger = logging.getLogger(__name__)
 
 
 def verify_recaptcha_token(
@@ -55,6 +58,7 @@ def verify_recaptcha_token(
     score = response.risk_analysis.score
 
     if score < 0.7:
-        return False, f"High risk transaction blocked. Score: {score}"
+        logger.error(f"High risk transaction blocked. Score: {score}")
+        return False, "reCAPTCHA validation failed."
 
     return True, "reCAPTCHA validation successful."
