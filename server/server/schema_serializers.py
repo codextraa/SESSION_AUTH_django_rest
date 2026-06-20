@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from server.utils.exception import BadRequestValidationError
 
 
 class SuccessResponseSerializer(serializers.Serializer):  # pylint: disable=W0223
@@ -48,13 +49,11 @@ class BaseRecaptchaSerializer(serializers.Serializer):  # pylint: disable=W0223
     def validate(self, attrs):
         request = self.context.get("request")
         if not request:
-            raise serializers.ValidationError(
-                {"error": "Internal server context error."}
-            )
+            raise BadRequestValidationError({"error": "Internal server context error."})
 
         user_agent = request.META.get("HTTP_USER_AGENT", "")
         if not user_agent:
-            raise serializers.ValidationError(
+            raise BadRequestValidationError(
                 {"user_agent": "Missing User Agent Header."}
             )
 
@@ -62,7 +61,7 @@ class BaseRecaptchaSerializer(serializers.Serializer):  # pylint: disable=W0223
             "HTTP_X_FORWARDED_FOR", request.META.get("HTTP_X_REAL_IP", "")
         )
         if not user_ip:
-            raise serializers.ValidationError({"user_ip": "Missing User IP Address."})
+            raise BadRequestValidationError({"user_ip": "Missing User IP Address."})
 
         if "," in user_ip:
             user_ip = user_ip.split(",")[0].strip()
