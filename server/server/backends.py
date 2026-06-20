@@ -1,6 +1,5 @@
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import identify_hasher
 from django.db.models import Q
 
 User = get_user_model()
@@ -19,11 +18,8 @@ class CustomAuthBackend(ModelBackend):
                 Q(email__exact=username.lower()) | Q(username__exact=username)
             )
         except User.DoesNotExist:
-            decoy_hash = "pbkdf2_sha256$1$invalid_salt$invalid_hash"
-            hasher = identify_hasher(decoy_hash)  # creates the hasher
             # Burning expected CPU cycles to neutralize timing attacks
-            hasher.verify(password, decoy_hash)
-
+            User().set_password(password, decoy=True)
             return None
 
         # Adding the user object to the request
