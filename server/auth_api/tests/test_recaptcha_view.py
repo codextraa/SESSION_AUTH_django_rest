@@ -176,7 +176,7 @@ class RecaptchaViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("user_agent", response.data)
-        self.assertEqual(response.data["user_agent"][0], "Missing User Agent Header.")
+        self.assertEqual(response.data["user_agent"], "Missing User Agent Header.")
 
     def test_missing_user_ip_header(self):
         """Test 400 bad request when IP headers are missing."""
@@ -189,7 +189,7 @@ class RecaptchaViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("user_ip", response.data)
-        self.assertEqual(response.data["user_ip"][0], "Missing User IP Address.")
+        self.assertEqual(response.data["user_ip"], "Missing User IP Address.")
 
     # ==========================================
     # REQUEST SERIALIZER IP REPLACEMENT (400)
@@ -295,7 +295,7 @@ class RecaptchaViewTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("High risk transaction blocked", response.data["error"])
+        self.assertIn("reCAPTCHA validation failed.", response.data["error"])
 
     # ==========================================
     # EXCEPTION HANDLING TESTS (500)

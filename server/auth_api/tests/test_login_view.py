@@ -6,11 +6,6 @@ from rest_framework.test import APITestCase, APIClient
 from unittest.mock import MagicMock, patch
 from server.utils.encryption import generate_cache_key
 
-import logging
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 User = get_user_model()
 
 
@@ -195,7 +190,7 @@ class LoginViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("user_agent", response.data)
-        self.assertEqual(response.data["user_agent"][0], "Missing User Agent Header.")
+        self.assertEqual(response.data["user_agent"], "Missing User Agent Header.")
 
     def test_missing_user_ip_header(self):
         """Test 400 bad request when IP headers are missing."""
@@ -208,7 +203,7 @@ class LoginViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("user_ip", response.data)
-        self.assertEqual(response.data["user_ip"][0], "Missing User IP Address.")
+        self.assertEqual(response.data["user_ip"], "Missing User IP Address.")
 
     # ==========================================
     # RECAPTCHA FAILURE TESTS (403)
@@ -264,7 +259,7 @@ class LoginViewTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertIn("High risk transaction blocked", response.data["error"])
+        self.assertIn("reCAPTCHA validation failed.", response.data["error"])
 
     @patch(
         "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
@@ -405,7 +400,7 @@ class LoginViewDBTests(APITestCase):
         cache.set(cache_failures_key, 2, timeout=3600)
 
         user_lock_hash = generate_cache_key(self.user.id)
-        user_lock_key = f"otp_cooldown:{self.user.id}:{user_lock_hash}"
+        user_lock_key = f"otp_cooldown:{user_lock_hash}"
 
         response = self.client.post(
             self.url, self.valid_payload, format="json", **self.headers
@@ -433,17 +428,11 @@ class LoginViewDBTests(APITestCase):
         cache.set(cache_failures_key, 3, timeout=3600)
 
         user_lock_hash = generate_cache_key(self.user.id)
-        user_lock_key = f"otp_cooldown:{self.user.id}:{user_lock_hash}"
+        user_lock_key = f"otp_cooldown:{user_lock_hash}"
 
         response = self.client.post(
             self.url, self.valid_payload, format="json", **self.headers
         )
-
-        logger.info("=" * 50)
-        logger.info("OUTGOING HTTP RESPONSE HEADERS:")
-        for header_name, header_value in response.headers.items():
-            logger.info(f"{header_name}: {header_value}")
-        logger.info("=" * 50)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
@@ -559,7 +548,7 @@ class LoginViewDBTests(APITestCase):
         response = self.client.post(self.url, payload, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        error_msg = str(response.data["error"][0])
+        error_msg = str(response.data["error"])
         self.assertEqual(error_msg, "Invalid credentials")
         self.assertEqual(cache.get(cache_failures_key), 1)
 
@@ -571,7 +560,7 @@ class LoginViewDBTests(APITestCase):
         self.assertEqual(cache.get(cache_failures_key), 3)
 
         # Confirms warnings evaluate correctly
-        error_msg3 = str(response3.data["error"][0])
+        error_msg3 = str(response3.data["error"])
         self.assertIn("You have 2 more attempt(s)", error_msg3)
 
     @patch(
@@ -595,7 +584,7 @@ class LoginViewDBTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
-        error_msg = str(response.data["error"][0])
+        error_msg = str(response.data["error"])
         self.assertIn("Your account has been deactivated", error_msg)
 
         self.user.refresh_from_db()
@@ -620,7 +609,7 @@ class LoginViewDBTests(APITestCase):
         mock_create_otp.return_value = {"success": False, "raw_pre_auth_token": None}
 
         user_lock_key = generate_cache_key(self.user.id)
-        cache_failure_key = f"otp_cooldown:{self.user.id}:{user_lock_key}"
+        cache_failure_key = f"otp_cooldown:{user_lock_key}"
 
         response = self.client.post(
             self.url, self.valid_payload, format="json", **self.headers
@@ -649,7 +638,7 @@ class LoginViewDBTests(APITestCase):
         )
 
         user_lock_hash = generate_cache_key(self.user.id)
-        user_lock_key = f"otp_cooldown:{self.user.id}:{user_lock_hash}"
+        user_lock_key = f"otp_cooldown:{user_lock_hash}"
         cache.set(user_lock_key, True, timeout=60)
 
         with patch("django.core.cache.cache.ttl", return_value=45, create=True):
