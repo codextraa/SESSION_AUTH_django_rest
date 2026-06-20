@@ -11,7 +11,7 @@ import {
   useCallback,
 } from "react";
 import { loginAction } from "@/actions/authActions";
-import { LoginAPIResponse } from "@/types/types";
+import { PrevStateLoginForm } from "@/types/types";
 import { redirect } from "next/navigation";
 import {
   FormButton,
@@ -21,12 +21,11 @@ import {
 } from "@/components/buttons/button";
 import { DEFAULT_LOGIN_REDIRECT } from "@/route";
 
-const initialState: LoginAPIResponse = {
-  success: undefined,
-  otp: undefined,
-  user_id: undefined,
-  error: undefined,
-  email: "",
+const initialState: PrevStateLoginForm = {
+  success: "",
+  pre_auth_token: false,
+  error: {},
+  email_or_username: "",
   password: "",
 };
 
@@ -63,9 +62,19 @@ export default function LoginForm() {
     });
   }, [v3SiteKey, currentVersion]);
 
-  if (state && "success" in state && state.success) {
-    console.log(state.success);
-    // redirect(DEFAULT_LOGIN_REDIRECT);
+  if (
+    state &&
+    "success" in state &&
+    state.success &&
+    "pre_auth_token" in state
+  ) {
+    if (state.pre_auth_token) {
+      //! eslint gives error fix it
+      sessionStorage.setItem("otpExpiry", (Date.now() + 600000).toString());
+      redirect("/auth/otp");
+    } else {
+      redirect(DEFAULT_LOGIN_REDIRECT);
+    }
   }
 
   useEffect(() => {
@@ -74,8 +83,8 @@ export default function LoginForm() {
         const response = await fetch("/api/recaptcha-key-v3"); // V3 key endpoint
         const data = await response.json();
         if (data.sitekey) setV3SiteKey(data.sitekey);
-      } catch (err) {
-        console.error("Failed to load reCAPTCHA v3 sitekey", err);
+      } catch (error) {
+        console.error("Failed to load reCAPTCHA v3 sitekey", error);
       }
     }
     fetchV3Key();
@@ -98,7 +107,14 @@ export default function LoginForm() {
   useEffect(() => {
     if (state && "error" in state && state.error) {
       if (currentVersion === "v3") {
-        if (state.error.includes("Score")) {
+        if (
+          state &&
+          "error" in state &&
+          typeof state.error === "object" &&
+          "recaptcha_token" in state.error &&
+          typeof state.error.recaptcha_token === "string" &&
+          state.error.recaptcha_token.includes("reCAPTCHA validation failed")
+        ) {
           setIsFallback(true);
         } else {
           setIsFallback(false);
@@ -198,10 +214,12 @@ export default function LoginForm() {
         {state &&
           "error" in state &&
           state.error &&
-          !state.error.includes("Score") && (
+          typeof state.error === "object" &&
+          "general" in state.error &&
+          typeof state.error.general === "string" && (
             <div className="w-full h-[40px] box-border bg-[rgba(255,5,5,0.15)] border-2 border-[#E30202] rounded-[93px] flex items-center justify-center px-4">
               <span className="font-['Merriweather'] font-normal text-[16px] leading-[20px] text-center text-[#D80E0E]">
-                {state.error}
+                {state.error.general}
               </span>
             </div>
           )}
@@ -216,19 +234,32 @@ export default function LoginForm() {
           <div className="flex flex-col gap-[25px]">
             <div className="w-full h-[42px]">
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="email_or_username"
+                name="email_or_username"
+                type="email_or_username"
+                autoComplete="email_or_username"
                 defaultValue={
-                  state && "email" in state && state.email ? state.email : ""
+                  state &&
+                  "email_or_username" in state &&
+                  state.email_or_username
+                    ? (state.email_or_username as string)
+                    : ""
                 }
                 disabled={isPending}
-                required
-                placeholder="Email*"
+                placeholder="Email or Username*"
                 className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] font-['Merriweather'] font-normal text-[16px] leading-[20px] text-[#000000] placeholder-[#000000] focus:outline-none"
               />
             </div>
+            {state &&
+              "error" in state &&
+              typeof state.error === "object" &&
+              "email_or_username" in state.error &&
+              typeof state.error.email_or_username === "string" &&
+              state.error.email_or_username !== "" && (
+                <p className="pl-[20px] font-['Merriweather'] text-[12px] text-[#D80E0E]">
+                  {state.error.email_or_username}
+                </p>
+              )}
 
             <div className="w-full h-[42px]">
               <input
@@ -239,10 +270,9 @@ export default function LoginForm() {
                 disabled={isPending}
                 defaultValue={
                   state && "password" in state && state.password
-                    ? state.password
+                    ? (state.password as string)
                     : ""
                 }
-                required
                 placeholder="Password*"
                 className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] font-['Merriweather'] font-normal text-[16px] leading-[20px] text-[#000000] placeholder-[#000000] focus:outline-none"
               />
@@ -254,6 +284,16 @@ export default function LoginForm() {
                 letter, one number, one special character.
               </p>
             </div>
+            {state &&
+              "error" in state &&
+              typeof state.error === "object" &&
+              "password" in state.error &&
+              typeof state.error.password === "string" &&
+              state.error.password !== "" && (
+                <p className="pl-[20px] font-['Merriweather'] text-[12px] text-[#D80E0E]">
+                  {state.error.password}
+                </p>
+              )}
           </div>
 
           {currentVersion === "v2" && (

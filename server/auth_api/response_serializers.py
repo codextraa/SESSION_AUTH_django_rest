@@ -63,7 +63,7 @@ class SessionResponseSerializer(CSRFTokenResponseSerializer):  # pylint: disable
             "null": "Session ID is required.",
         },
     )
-    session_token_expiry = serializers.DateTimeField(
+    session_expiry = serializers.DateTimeField(
         required=True,
         allow_null=False,
         help_text="Session token expiry in ISO 8601 format.",

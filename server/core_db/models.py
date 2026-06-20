@@ -95,12 +95,13 @@ class User(AbstractBaseUser, PermissionsMixin):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
 
-    def set_password(self, raw_password):
+    def set_password(self, raw_password, decoy=False):
         """Validates raw password before hashing"""
         if not raw_password:
             raise ValidationError({"password": "Password is required"})
 
-        validate_password(raw_password, user=self)
+        if not decoy:
+            validate_password(raw_password, user=self)
         super().set_password(raw_password)
 
     def clean(self):

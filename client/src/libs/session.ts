@@ -1,8 +1,10 @@
 import {
   SessionData,
+  PreAuthData,
   CSRFTokenData,
   CSRFTokenResponseSuccess,
   SessionResponseSuccess,
+  PreAuthResponseSuccess,
 } from "@/types/types";
 
 const ALGORITHM = "AES-GCM";
@@ -58,6 +60,23 @@ export function validateSessionData(
   };
 }
 
+export function validatePreAuthData(
+  data: PreAuthResponseSuccess,
+): PreAuthData | null {
+  if (typeof data !== "object" || data === null) {
+    return null;
+  }
+
+  if (typeof data.pre_auth_token !== "string") {
+    return null;
+  }
+  const pre_auth_token = String(data.pre_auth_token).trim();
+
+  return {
+    pre_auth_token,
+  };
+}
+
 export function validateCSRFTokenData(
   data: SessionResponseSuccess | CSRFTokenResponseSuccess,
 ): CSRFTokenData | null {
@@ -90,7 +109,7 @@ export function validateCSRFTokenData(
  * @returns {Promise<string>} - Encrypted data in base64 format
  */
 export async function encrypt(
-  data: SessionData | CSRFTokenData,
+  data: SessionData | CSRFTokenData | PreAuthData,
 ): Promise<string> {
   if (!SECRET_KEY) {
     await get_secret_key();
@@ -143,7 +162,7 @@ export async function encrypt(
  */
 export async function decrypt(
   encryptedData: string,
-): Promise<SessionData | CSRFTokenData> {
+): Promise<SessionData | CSRFTokenData | PreAuthData> {
   if (!SECRET_KEY) {
     await get_secret_key();
     if (!SECRET_KEY || SECRET_KEY.length !== 64) {

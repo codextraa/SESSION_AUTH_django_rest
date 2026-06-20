@@ -46,7 +46,7 @@ class OTPCooldownThrottle(BaseThrottle):
                 return True  # Serializer will return 400
 
             user_lock_key = generate_cache_key(user_id)
-            user_cache_key = f"otp_cooldown:{user_id}:{user_lock_key}"
+            user_cache_key = f"otp_cooldown:{user_lock_key}"
 
             if cache.get(user_cache_key):
                 self.remaining_ttl = calculate_remaining_ttl(user_cache_key)

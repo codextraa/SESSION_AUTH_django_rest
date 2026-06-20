@@ -3,7 +3,12 @@ export interface SuccessResponse {
 }
 
 export interface ErrorResponse {
-  error: string | undefined;
+  error: string | object | undefined;
+}
+
+export interface CSRFTokenData {
+  csrf_token: string;
+  csrf_token_expiry: string;
 }
 
 export interface SessionData {
@@ -13,34 +18,9 @@ export interface SessionData {
   session_expiry: string;
 }
 
-export interface CSRFTokenData {
-  csrf_token: string;
-  csrf_token_expiry: string;
+export interface PreAuthData {
+  pre_auth_token: string;
 }
-
-export interface LoginAPIResponseSuccess {
-  success: string | undefined;
-  otp: boolean | undefined;
-  user_id: number | undefined;
-}
-
-export interface LoginData {
-  email: string;
-  password: string;
-}
-
-export type LoginAPIResponse =
-  | LoginAPIResponseSuccess
-  | ErrorResponse
-  | LoginData;
-
-export interface reCaptchaTokenData {
-  recaptcha_token: string | undefined;
-  recaptcha_version: string | undefined;
-  expected_action?: string | undefined;
-}
-
-export type reCaptchaVerifyResponse = SuccessResponse | ErrorResponse;
 
 export interface CSRFTokenResponseSuccess {
   csrf_token: string | undefined;
@@ -58,7 +38,51 @@ export interface SessionResponseSuccess {
   csrf_token_expiry: string | undefined;
 }
 
-export type SessionResponse = SessionResponseSuccess | ErrorResponse;
+export interface PreAuthResponseSuccess {
+  success: string | undefined;
+  pre_auth_token: string | undefined;
+}
+
+export type SessionResponse =
+  | SessionResponseSuccess
+  | PreAuthResponseSuccess
+  | ErrorResponse;
+
+export interface LoginInput {
+  email_or_username: string | undefined;
+  password: string | undefined;
+  recaptcha_token: string | undefined;
+  recaptcha_version: string | undefined;
+}
+
+export interface LoginErrorFields {
+  email_or_username?: string;
+  password?: string;
+  recaptcha_version?: string;
+  recaptcha_token?: string;
+  general?: string;
+}
+
+export interface PrevStateLoginForm {
+  success: string;
+  pre_auth_token: boolean;
+  error: object;
+  email_or_username: string;
+  password: string;
+}
+
+// export type PrevStateLoginForm =
+//   | LoginInput
+//   | LoginSuccessState
+//   | ErrorResponse
+//   | undefined;
+// export interface reCaptchaTokenData {
+//   recaptcha_token: string | undefined;
+//   recaptcha_version: string | undefined;
+//   expected_action?: string | undefined;
+// } //not need anymore but keep for now
+
+// export type reCaptchaVerifyResponse = SuccessResponse | ErrorResponse;
 
 /* eslint-disable no-unused-vars */
 declare global {

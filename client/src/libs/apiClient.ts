@@ -40,6 +40,10 @@ export class ApiClient {
       }
     }
 
+    if (response.status >= 500) {
+      return { error: "Unexpected error occurred." }; // Server-side error
+    }
+
     if (response.status >= 400) {
       if (response.status === 401) {
         return {
@@ -89,10 +93,6 @@ export class ApiClient {
       //   console.error('Error while reading the error response body:', err);
       //   return { error: 'Unexpected error occurred. Something went wrong' };
       // };
-    }
-
-    if (response.status >= 500) {
-      return { error: "Server error" }; // Server-side error
     }
 
     throw new Error("Unexpected error occurred.");
