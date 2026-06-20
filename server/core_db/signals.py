@@ -1,17 +1,26 @@
 """Signals used before or after saving a model"""
 
 from django.db.models.signals import pre_save, post_save
+from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.dispatch import receiver
 from django.utils.text import slugify
 from .models import User
+from .utils import generate_random_username
+
+User = get_user_model()
 
 
 @receiver(pre_save, sender=User)
 def set_user_username(sender, instance, **kwargs):  # pylint: disable=unused-argument
     """Set unique username if not provided"""
     if not instance.username:
-        instance.username = instance.email
+        username = generate_random_username()
+
+        while User.objects.filter(username=username).exists():
+            username = generate_random_username()
+
+        instance.username = username
 
 
 @receiver(post_save, sender=User)

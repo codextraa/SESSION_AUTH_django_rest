@@ -9,7 +9,7 @@ import {
   SignUpPasswordErrorResponse,
 } from "@/types/types";
 
-export const userError = async (
+const userError = async (
   response: CreateUserErrorResponse,
 ): Promise<CreateUserErrorResponse> => {
   if (response.error && typeof response.error === "object") {

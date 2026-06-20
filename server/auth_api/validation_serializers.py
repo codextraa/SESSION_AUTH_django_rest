@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from django.conf import settings
 from django.core.cache import cache
-from server.utils.exception import ForbiddenValidationError
+from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
 from server.utils.encryption import generate_cache_key
 
 
@@ -16,7 +16,7 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
         request = self.context.get("request")
 
         if not user:  # Wrong Password
-            user_obj = user_obj = (
+            user_obj = (
                 getattr(request, "authenticated_user_obj", None) if request else None
             )
 
@@ -50,7 +50,7 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
                         user_obj.is_active = False
                         user_obj.save()
 
-                    raise serializers.ValidationError(
+                    raise BadRequestValidationError(
                         {
                             "error": (
                                 "Invalid credentials. Your account has been deactivated."
@@ -64,7 +64,7 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
                     remaining_attempts = (
                         settings.MAX_LOGIN_FAILURE_LIMIT - failed_attempts
                     )
-                    raise serializers.ValidationError(
+                    raise BadRequestValidationError(
                         {
                             "error": (
                                 f"Invalid credentials. You have {remaining_attempts}"
@@ -73,7 +73,7 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
                         },
                     )
 
-            raise serializers.ValidationError({"error": "Invalid credentials"})
+            raise BadRequestValidationError({"error": "Invalid credentials"})
 
         if user.auth_provider != "email":
             raise ForbiddenValidationError(
@@ -83,6 +83,11 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
                         f"as user is created using {user.auth_provider}"
                     )
                 }
+            )
+
+        if not user.is_active:
+            raise ForbiddenValidationError(
+                {"error": "Account has been deactivated. Contact your admin"}
             )
 
         if not user.is_email_verified:

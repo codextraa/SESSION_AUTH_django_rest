@@ -19,7 +19,7 @@ from drf_spectacular.utils import (
 )
 
 from server.renderers import ViewRenderer
-from server.utils.exception import ForbiddenValidationError
+from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
 from server.utils.recaptcha import verify_recaptcha_token
 from server.utils.encryption import generate_cache_key
 from server.utils.throttles import OTPCooldownThrottle
@@ -196,7 +196,7 @@ class RecaptchaValidationView(APIView):
                 name="Low Score",
                 response_only=True,
                 status_codes=["403"],
-                value={"error": "High risk transaction blocked. Score: 0.3"},
+                value={"error": "reCAPTCHA validation failed."},
             ),
             OpenApiExample(
                 name="Internal Server Error",
@@ -235,7 +235,7 @@ class RecaptchaValidationView(APIView):
                 status=status.HTTP_200_OK,
             )
         except Exception as e:  # pylint: disable=W0718
-            if isinstance(e, ValidationError):
+            if isinstance(e, (ValidationError, BadRequestValidationError)):
                 raise e
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -310,6 +310,27 @@ class LoginView(APIView):
         },
         examples=[
             OpenApiExample(
+                name="Superuser Login Request Example",
+                value={
+                    "email": "superuser@example.com",
+                    "password": "Django@123",
+                },
+            ),
+            OpenApiExample(
+                name="Staff Login Request Example",
+                value={
+                    "email": "staffuser@example.com",
+                    "password": "Django@123",
+                },
+            ),
+            OpenApiExample(
+                name="Default User Login Request Example",
+                value={
+                    "email": "defaultuser@example.com",
+                    "password": "Django@123",
+                },
+            ),
+            OpenApiExample(
                 name="OTP Success (2FA Enabled)",
                 response_only=True,
                 status_codes=["200"],
@@ -324,7 +345,7 @@ class LoginView(APIView):
                 status_codes=["200"],
                 value={
                     "sessionid": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-SESSIONID",
-                    "session_token_expiry": "2026-06-17T12:34:56.789Z",
+                    "session_expiry": "2026-06-17T12:34:56.789Z",
                     "user_id": 42,
                     "user_role": "Default",
                     "csrf_token": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-CSRFTOKEN",
@@ -413,7 +434,7 @@ class LoginView(APIView):
                 name="Low Score",
                 response_only=True,
                 status_codes=["403"],
-                value={"error": "High risk transaction blocked. Score: 0.3"},
+                value={"error": "reCAPTCHA validation failed."},
             ),
             OpenApiExample(
                 name="Deactivated Account Check",
@@ -520,7 +541,7 @@ class LoginView(APIView):
 
             login(request, validated_user)
             sessionid = request.session.session_key
-            session_token_expiry = (
+            session_expiry = (
                 datetime.now(timezone.utc)
                 + timedelta(seconds=settings.SESSION_COOKIE_TTL)
                 - timedelta(seconds=10)
@@ -535,7 +556,7 @@ class LoginView(APIView):
 
             raw_data = {
                 "sessionid": sessionid,
-                "session_token_expiry": session_token_expiry,
+                "session_expiry": session_expiry,
                 "user_id": validated_user.id,
                 "user_role": get_user_role(validated_user),
                 "csrf_token": csrf_token,
@@ -551,7 +572,10 @@ class LoginView(APIView):
 
             return Response(token_res_serializer.data, status=status.HTTP_200_OK)
         except Exception as e:  # pylint: disable=W0718
-            if isinstance(e, (ValidationError, ForbiddenValidationError)):
+            if isinstance(
+                e,
+                (ValidationError, BadRequestValidationError, ForbiddenValidationError),
+            ):
                 raise e
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR

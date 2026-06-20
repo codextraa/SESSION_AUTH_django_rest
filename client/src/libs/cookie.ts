@@ -6,15 +6,18 @@ import {
   decrypt,
   validateSessionData,
   validateCSRFTokenData,
+  validatePreAuthData,
 } from "./session";
 import { getCSRFToken, refreshSession } from "./api";
 import {
   SessionData,
+  PreAuthData,
   CSRFTokenData,
   CSRFTokenResponse,
   CSRFTokenResponseSuccess,
   SessionResponse,
   SessionResponseSuccess,
+  PreAuthResponseSuccess,
 } from "@/types/types";
 
 export const setSessionCookie = async (
@@ -56,6 +59,40 @@ export const setSessionCookie = async (
       value: encryptedSessionData,
       ...cookieConfig,
     };
+  } catch (error) {
+    console.error("Error setting cookie:", error);
+    throw new Error("Failed to set session cookie.");
+  }
+};
+
+export const setPreAuthCookie = async (
+  data: PreAuthResponseSuccess,
+): Promise<void> => {
+  try {
+    const validPreAuthData: PreAuthData | null = validatePreAuthData(data);
+
+    if (!validPreAuthData) {
+      throw new Error("Invalid pre-auth data.");
+    }
+
+    const encryptedPreAuthToken = await encrypt(validPreAuthData);
+
+    // Create a secure cookie
+    // Set the secure cookie using Next.js cookies API
+    const cookieConfig: Omit<ResponseCookie, "name" | "value"> = {
+      httpOnly: true,
+      secure: process.env.HTTPS === "true", // Secure in production
+      maxAge: 60 * 10, // 10 minutes
+      path: "/", // Dynamic path
+      sameSite: "lax", // Helps prevent CSRF attacks
+    };
+
+    const cookieStore = await cookies();
+    cookieStore.set(
+      "__Secure-preAuthToken",
+      encryptedPreAuthToken,
+      cookieConfig,
+    );
   } catch (error) {
     console.error("Error setting cookie:", error);
     throw new Error("Failed to set session cookie.");
@@ -155,6 +192,20 @@ export const deleteSessionCookie = async (): Promise<void> => {
   }
 };
 
+export const deletePreAuthCookie = async (): Promise<void> => {
+  const cookieStore = await cookies();
+
+  if (cookieStore.has("__Secure-preAuthToken")) {
+    cookieStore.set("__Secure-preAuthToken", "", {
+      httpOnly: true,
+      secure: process.env.HTTPS === "true", // Secure in production
+      maxAge: 0, // Expire the cookie immediately
+      path: "/", // Ensure the cookie is deleted for all paths
+      sameSite: "lax",
+    });
+  }
+};
+
 export const deleteCSRFCookie = async (): Promise<void> => {
   const cookieStore = await cookies();
 
@@ -189,9 +240,8 @@ export const getCSRFTokenFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: SessionData | CSRFTokenData = await decrypt(
-      sessionCookie.value,
-    ); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData | PreAuthData =
+      await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (
       decryptedData &&
@@ -224,9 +274,8 @@ export const getCSRFTokenExpiryFromSession = async (): Promise<
   }
 
   try {
-    const decryptedData: SessionData | CSRFTokenData = await decrypt(
-      sessionCookie.value,
-    ); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData | PreAuthData =
+      await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (
       decryptedData &&
@@ -254,6 +303,45 @@ export const getCSRFTokenExpiryFromSession = async (): Promise<
   }
 };
 
+export const getPreAuthCookie = async (): Promise<
+  RequestCookie | undefined
+> => {
+  const cookieStore = await cookies();
+  return cookieStore.get("__Secure-preAuthToken");
+};
+
+export const getPreAuthTokenFromSession = async (): Promise<string | null> => {
+  const cookieStore = await cookies();
+  const sessionCookie = cookieStore.get("__Secure-preAuthToken"); // Retrieve the session cookie
+
+  if (!sessionCookie) {
+    return null; // No session cookie found
+  }
+
+  if (!sessionCookie.value) {
+    return null; // No session cookie value found
+  }
+
+  try {
+    const decryptedData: SessionData | CSRFTokenData | PreAuthData =
+      await decrypt(sessionCookie.value); // Decrypt the session data
+
+    if (
+      decryptedData &&
+      "pre_auth_token" in decryptedData &&
+      decryptedData.pre_auth_token
+    ) {
+      // Check if pre_auth_token is present
+      return decryptedData.pre_auth_token; // Return pre_auth_token if present
+    }
+
+    return null; // Return null if pre_auth_token is not present
+  } catch (error) {
+    console.error("Error decrypting session data:", error);
+    return null; // Return null if decryption fails
+  }
+};
+
 export const getSessionCookie = async (): Promise<
   RequestCookie | undefined
 > => {
@@ -274,9 +362,8 @@ export const getUserIdFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: SessionData | CSRFTokenData = await decrypt(
-      sessionCookie.value,
-    ); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData | PreAuthData =
+      await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (decryptedData && "user_id" in decryptedData && decryptedData.user_id) {
       // Check if user_id is present
@@ -303,9 +390,8 @@ export const getUserRoleFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: SessionData | CSRFTokenData = await decrypt(
-      sessionCookie.value,
-    ); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData | PreAuthData =
+      await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (
       decryptedData &&
@@ -335,9 +421,8 @@ export const getSessionIdFromSession = async (): Promise<string | null> => {
   }
 
   try {
-    const decryptedData: SessionData | CSRFTokenData = await decrypt(
-      sessionCookie.value,
-    ); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData | PreAuthData =
+      await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (
       decryptedData &&
@@ -370,9 +455,8 @@ export const getSessionExpiryFromSession = async (): Promise<
   }
 
   try {
-    const decryptedData: SessionData | CSRFTokenData = await decrypt(
-      sessionCookie.value,
-    ); // Decrypt the session data
+    const decryptedData: SessionData | CSRFTokenData | PreAuthData =
+      await decrypt(sessionCookie.value); // Decrypt the session data
 
     if (
       decryptedData &&
