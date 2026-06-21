@@ -281,38 +281,6 @@ class LoginViewTests(APITestCase):
         self.assertEqual(response.data["error"], "Google service unavailable")
 
     # ==========================================
-    # THROTTLING & RATE LIMIT WORKFLOW TESTS (429)
-    # ==========================================
-
-    @patch("rest_framework.throttling.ScopedRateThrottle.allow_request")
-    @patch(
-        "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
-    )
-    def test_login_scoped_rate_throttle_returns_429(
-        self, mock_recaptcha, mock_scoped_allow
-    ):
-        """Test that ScopedRateThrottle blocks requests exceeding the 15/min limit and triggers custom 429 response."""
-        mock_recaptcha.return_value.create_assessment.return_value = (
-            self.create_mock_recaptcha_response()
-        )
-
-        mock_scoped_allow.return_value = False
-
-        with patch(
-            "rest_framework.throttling.ScopedRateThrottle.wait", return_value=30
-        ):
-            response = self.client.post(
-                self.url, self.valid_payload, format="json", **self.headers
-            )
-
-        self.assertEqual(response.status_code, status.HTTP_429_TOO_MANY_REQUESTS)
-        self.assertIn("error", response.data)
-        self.assertEqual(
-            response.data["error"],
-            "Please wait 30 seconds before requesting another OTP.",
-        )
-
-    # ==========================================
     # CSRFTOKEN FAILURE TEST
     # ==========================================
 
@@ -395,9 +363,12 @@ class LoginViewDBTests(APITestCase):
             self.create_mock_recaptcha_response()
         )
 
-        hashed_key = generate_cache_key(self.user.id)
-        cache_failures_key = f"login_failures:{hashed_key}"
-        cache.set(cache_failures_key, 2, timeout=3600)
+        login_hashed_key = generate_cache_key(self.user.id)
+        login_failure_key = f"login_failures:{login_hashed_key}"
+        cache.set(login_failure_key, 2, timeout=3600)
+
+        dummy_hash_key = generate_cache_key("ghost_user")
+        dummy_key = f"login_failures:{dummy_hash_key}"
 
         user_lock_hash = generate_cache_key(self.user.id)
         user_lock_key = f"otp_cooldown:{user_lock_hash}"
@@ -409,13 +380,14 @@ class LoginViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn("pre_auth_token", response.data)
         self.assertTrue(cache.get(user_lock_key))
-        self.assertIsNone(cache.get(cache_failures_key))
+        self.assertIsNone(cache.get(login_failure_key))
+        self.assertIsNone(cache.get(dummy_key))
 
     @patch(
         "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
     )
     def test_login_with_2fa_disabled_success(self, mock_recaptcha):
-        """Test that a user with 2FA disabled directly receives session id and resets failure cache."""
+        """Test that a user with 2FA disabled directly receives JWT access/refresh tokens and resets failure cache."""
         mock_recaptcha.return_value.create_assessment.return_value = (
             self.create_mock_recaptcha_response()
         )
@@ -423,9 +395,12 @@ class LoginViewDBTests(APITestCase):
         self.user.is_two_fa = False
         self.user.save()
 
-        hashed_key = generate_cache_key(self.user.id)
-        cache_failures_key = f"login_failures:{hashed_key}"
-        cache.set(cache_failures_key, 3, timeout=3600)
+        login_hashed_key = generate_cache_key(self.user.id)
+        login_failure_key = f"login_failures:{login_hashed_key}"
+        cache.set(login_failure_key, 3, timeout=3600)
+
+        dummy_hash_key = generate_cache_key("ghost_user")
+        dummy_key = f"login_failures:{dummy_hash_key}"
 
         user_lock_hash = generate_cache_key(self.user.id)
         user_lock_key = f"otp_cooldown:{user_lock_hash}"
@@ -449,8 +424,9 @@ class LoginViewDBTests(APITestCase):
             self.assertIsNotNone(response.data[key])
 
         self.assertEqual(response.data["user_id"], self.user.id)
-        self.assertIsNone(cache.get(cache_failures_key))
+        self.assertIsNone(cache.get(login_failure_key))
         self.assertIsNone(cache.get(user_lock_key))
+        self.assertIsNone(cache.get(dummy_key))
 
     # ==========================================
     # AUTHENTICATED USER STATE VALIDATION (400)
@@ -532,6 +508,33 @@ class LoginViewDBTests(APITestCase):
     @patch(
         "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
     )
+    def test_failed_login_uses_dummy_hash_for_invalid_user(self, mock_recaptcha):
+        """Test cache counts increment on sequential email failures and increments dummy key."""
+        mock_recaptcha.return_value.create_assessment.return_value = (
+            self.create_mock_recaptcha_response()
+        )
+
+        payload = self.valid_payload.copy()
+        payload["email_or_username"] = "wrongemail@example.com"
+
+        login_hashed_key = generate_cache_key(self.user.id)
+        login_failure_key = f"login_failures:{login_hashed_key}"
+
+        dummy_hash_key = generate_cache_key("ghost_user")
+        dummy_key = f"login_failures:{dummy_hash_key}"
+
+        # 3 attempts
+        self.client.post(self.url, payload, format="json", **self.headers)
+        self.client.post(self.url, payload, format="json", **self.headers)
+        response3 = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response3.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(cache.get(dummy_key), 3)
+        self.assertIsNone(cache.get(login_failure_key))
+
+    @patch(
+        "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
+    )
     def test_failed_login_increments_cache_and_warns(self, mock_recaptcha):
         """Test cache counts increment on sequential password failures and issue warning at 3 hits."""
         mock_recaptcha.return_value.create_assessment.return_value = (
@@ -541,8 +544,11 @@ class LoginViewDBTests(APITestCase):
         payload = self.valid_payload.copy()
         payload["password"] = "WrongPassword111!"
 
-        hashed_key = generate_cache_key(self.user.id)
-        cache_failures_key = f"login_failures:{hashed_key}"
+        login_hashed_key = generate_cache_key(self.user.id)
+        login_failure_key = f"login_failures:{login_hashed_key}"
+
+        dummy_hash_key = generate_cache_key("ghost_user")
+        dummy_key = f"login_failures:{dummy_hash_key}"
 
         # Attempt 1: First wrong password entry
         response = self.client.post(self.url, payload, format="json", **self.headers)
@@ -550,18 +556,19 @@ class LoginViewDBTests(APITestCase):
 
         error_msg = str(response.data["error"])
         self.assertEqual(error_msg, "Invalid credentials")
-        self.assertEqual(cache.get(cache_failures_key), 1)
+        self.assertEqual(cache.get(login_failure_key), 1)
 
         # Attempt 2 & 3: Sequential incorrect submissions to trigger warning thresholds
         self.client.post(self.url, payload, format="json", **self.headers)
         response3 = self.client.post(self.url, payload, format="json", **self.headers)
 
         self.assertEqual(response3.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(cache.get(cache_failures_key), 3)
+        self.assertEqual(cache.get(login_failure_key), 3)
 
         # Confirms warnings evaluate correctly
         error_msg3 = str(response3.data["error"])
         self.assertIn("You have 2 more attempt(s)", error_msg3)
+        self.assertIsNone(cache.get(dummy_key))
 
     @patch(
         "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
@@ -575,10 +582,13 @@ class LoginViewDBTests(APITestCase):
         payload = self.valid_payload.copy()
         payload["password"] = "WrongPassword111!"
 
-        hashed_key = generate_cache_key(self.user.id)
-        cache_failures_key = f"login_failures:{hashed_key}"
+        login_hashed_key = generate_cache_key(self.user.id)
+        login_failure_key = f"login_failures:{login_hashed_key}"
 
-        cache.set(cache_failures_key, 4, timeout=3600)
+        dummy_hash_key = generate_cache_key("ghost_user")
+        dummy_key = f"login_failures:{dummy_hash_key}"
+
+        cache.set(login_failure_key, 4, timeout=3600)
 
         response = self.client.post(self.url, payload, format="json", **self.headers)
 
@@ -590,8 +600,16 @@ class LoginViewDBTests(APITestCase):
         self.user.refresh_from_db()
         self.assertFalse(self.user.is_active)
 
+        response2 = self.client.post(self.url, payload, format="json", **self.headers)
+
+        self.assertEqual(response2.status_code, status.HTTP_403_FORBIDDEN)
+
+        error_msg2 = str(response2.data["error"])
+        self.assertIn("Account has been deactivated.", error_msg2)
+        self.assertIsNone(cache.get(dummy_key))
+
     # ==========================================
-    # 2FA OTP WORKFLOW TESTS (400)
+    # 2FA OTP WORKFLOW TESTS (424)
     # ==========================================
 
     @patch("auth_api.views.create_otp")
@@ -608,6 +626,12 @@ class LoginViewDBTests(APITestCase):
 
         mock_create_otp.return_value = {"success": False, "raw_pre_auth_token": None}
 
+        login_hashed_key = generate_cache_key(self.user.id)
+        login_failure_key = f"login_failures:{login_hashed_key}"
+
+        dummy_hash_key = generate_cache_key("ghost_user")
+        dummy_key = f"login_failures:{dummy_hash_key}"
+
         user_lock_key = generate_cache_key(self.user.id)
         cache_failure_key = f"otp_cooldown:{user_lock_key}"
 
@@ -622,6 +646,8 @@ class LoginViewDBTests(APITestCase):
             error_msg, "Something went wrong, could not send OTP. Try again"
         )
         self.assertNotIn("pre_auth_token", response.data)
+        self.assertIsNone(cache.get(login_failure_key))
+        self.assertIsNone(cache.get(dummy_key))
         self.assertIsNone(cache.get(cache_failure_key))
 
     # ==========================================

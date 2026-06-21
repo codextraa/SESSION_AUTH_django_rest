@@ -284,13 +284,13 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAdminUser",
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
-    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
-    "DEFAULT_THROTTLE_RATES": {
-        "email_otp": "15/min",
-        "email_verify": "15/min",
-        "password_reset": "15/min",
-        "phone_otp": "15/min",
-    },
+    "DEFAULT_THROTTLE_CLASSES": (),
+    # "DEFAULT_THROTTLE_RATES": {
+    #     "email_otp": "15/min",
+    #     "email_verify": "15/min",
+    #     "password_reset": "15/min",
+    #     "phone_otp": "15/min",
+    # },
     "ORDERING_PARAM": "ordering",
 }
 
