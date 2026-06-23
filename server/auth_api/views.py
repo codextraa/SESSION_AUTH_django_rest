@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.middleware.csrf import get_token
 from django.core.cache import cache
-from django.contrib.auth import authenticate, login
+from django.contrib.auth import authenticate, login, get_user_model
 from django.views.decorators.csrf import csrf_protect
 from django.utils.decorators import method_decorator
 from rest_framework import status
@@ -21,14 +21,14 @@ from server.renderers import ViewRenderer
 from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
 from server.utils.recaptcha import verify_recaptcha_token
 from server.utils.encryption import generate_cache_key
-from server.utils.throttles import OTPCooldownThrottle
+from server.utils.throttles import OTPCooldownThrottle, TwoFACooldownThrottle
 from server.schema_serializers import (
     SuccessResponseSerializer,
     ErrorResponseSerializer,
 )
-from .utils import get_user_role, create_otp
+from .utils import get_user_role, create_otp, verify_otp
 from .validation_serializers import ValidUserSerializer
-from .request_serializers import RecaptchaRequestSerializer, LoginRequestSerializer
+from .request_serializers import RecaptchaRequestSerializer, LoginRequestSerializer, TwoFARequestSerializer
 from .response_serializers import (
     CSRFTokenResponseSerializer,
     OTPResponseSerializer,
@@ -571,6 +571,191 @@ class LoginView(APIView):
                 e,
                 (ValidationError, BadRequestValidationError, ForbiddenValidationError),
             ):
+                raise e
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+
+class TwoFAView(APIView):
+    """2FA view."""
+
+    permission_classes = [AllowAny]
+    renderer_classes = [ViewRenderer]
+    throttle_classes = [TwoFACooldownThrottle]
+
+    def handle_exception(self, exc):
+        if isinstance(exc, Throttled):
+            return Response(
+                {
+                    "error": (
+                        f"Please wait {exc.wait} seconds before"
+                        " submitting another OTP."
+                    )
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        return super().handle_exception(exc)
+
+    @extend_schema(
+        summary="Generate Session ID",
+        description=(
+            "Verifies OTP and generates Session ID "
+            "for the authenticated user."
+        ),
+        request=TwoFARequestSerializer,
+        tags=["Authentication"],
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                response=SessionResponseSerializer,
+                description="Return Session ID",
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Bad Request - Invalid request parameters",
+            ),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Forbidden - reCAPTCHA validation failed",
+            ),
+            status.HTTP_429_TOO_MANY_REQUESTS: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Too Many Requests",
+            ),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Internal Server Error.",
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="2FA Request Example",
+                value={
+                    "pre-auth-token": "kdslfjs0f9ujse8fhse8fs-PRE-AUTH-TOKEN",
+                    "otp": "000000",
+                },
+            ),
+            OpenApiExample(
+                name="Session ID Success",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "sessionid": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-SESSIONID",
+                    "session_expiry": "2026-06-17T12:34:56.789Z",
+                    "user_id": 42,
+                    "user_role": "Default",
+                    "csrf_token": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-CSRFTOKEN",
+                    "csrf_token_expiry": "2026-06-18T12:34:56.789Z",
+                },
+            ),
+            OpenApiExample(
+                name="Missing Pre Auth Token",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"pre_auth_token": ["Token is required."]}},
+            ),
+            OpenApiExample(
+                name="Missing OTP",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"otp": ["OTP is required."]}},
+            ),
+            OpenApiExample(
+                name="Invalid OTP",
+                response_only=True,
+                status_codes=["400"],
+                value={"errors": {"otp": ["OTP is invalid."]}},
+            ),
+            OpenApiExample(
+                name="Invalid Pre Auth Token",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Invalid Pre Auth Token"},
+            ),
+            OpenApiExample(
+                name="Invalid OTP",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Invalid OTP"},
+            ),
+            OpenApiExample(
+                name="Throttled Wait Penalty",
+                response_only=True,
+                status_codes=["429"],
+                value={
+                    "error": "Please wait 45 seconds before submitting another OTP."
+                },
+            ),
+            OpenApiExample(
+                name="Internal Server Error",
+                response_only=True,
+                status_codes=["500"],
+                value={"error": "Internal Server Error"},
+            ),
+        ],
+    )
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):  # pylint: disable=R0911, R0914
+        """Post a request to TwoFA. Returns SessionID to the registered email."""
+        try:
+            req_serializer = TwoFARequestSerializer(
+                data=request.data
+            )
+
+            req_serializer.is_valid(raise_exception=True)
+
+            req_validated_data = req_serializer.validated_data
+
+            otp_validation_success = verify_otp(
+                req_validated_data["pre_auth_token"], 
+                req_validated_data["otp"]
+            )
+
+            if otp_validation_success.get("error"):
+                return Response(
+                    {"error": otp_validation_success["error"]},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            
+            user_id = otp_validation_success["user_id"]
+
+            user = get_user_model().objects.get(id=user_id)
+
+            login(request, user, backend="server.backends.CustomAuthBackend")
+            sessionid = request.session.session_key
+            session_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.SESSION_COOKIE_TTL)
+                - timedelta(seconds=10)
+            ).isoformat()
+
+            csrf_token = get_token(request)
+            csrf_token_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.CSRF_TOKEN_TTL)
+                - timedelta(seconds=10)
+            )
+
+            raw_data = {
+                "sessionid": sessionid,
+                "session_expiry": session_expiry,
+                "user_id": user.id,
+                "user_role": get_user_role(user),
+                "csrf_token": csrf_token,
+                "csrf_token_expiry": csrf_token_expiry,
+            }
+
+            token_res_serializer = SessionResponseSerializer(data=raw_data)
+
+            token_res_serializer.is_valid(raise_exception=True)
+
+            hashed_key = generate_cache_key(req_validated_data["pre_auth_token"])
+            cache.delete(f"pre_auth:{hashed_key}")
+ 
+            return Response(token_res_serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:  # pylint: disable=W0718
+            if isinstance(e, ValidationError):
                 raise e
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
