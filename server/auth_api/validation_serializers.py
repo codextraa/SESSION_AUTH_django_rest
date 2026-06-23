@@ -75,13 +75,13 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
             else:
                 # Dummy key for burning expected CPU cycles to neutralize timing attacks
                 dummy_hash_key = generate_cache_key("ghost_user")
-                dummy_key = f"login_failures:{dummy_hash_key}"
+                dummy_key = f"ghost_failures:{dummy_hash_key}"
 
                 dummy_attempts = cache.get(dummy_key)
                 if dummy_attempts is not None:
                     _ = cache.incr(dummy_key)
                 else:
-                    cache.set(dummy_key, 1, timeout=600)
+                    cache.set(dummy_key, 1, timeout=settings.DUMMY_COOLDOWN_TTL)
 
             raise BadRequestValidationError({"error": "Invalid credentials"})
 

@@ -51,10 +51,14 @@ def decrypt_and_get_cache_data(raw_pre_auth_token, prefix, obj=True):
         hashed_key = generate_cache_key(raw_pre_auth_token)
 
         encrypted_data = cache.get(f"{prefix}:{hashed_key}")  # Get the encrypted block
+
+        if not encrypted_data:
+            return None, "Invalid Pre Auth Token"
+        
         encoded_encrypted_data = encrypted_data.encode()  # Convert to bytes
 
         cipher_suite = Fernet(
-            settings.TWO_FA_ENCRYPTION_KEY.encode()
+            settings.ENCRYPTION_KEY.encode()
         )  # Fernet key converted to bytes
         decrypted_bytes = cipher_suite.decrypt(
             encoded_encrypted_data

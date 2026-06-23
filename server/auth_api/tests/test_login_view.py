@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.conf import settings
 from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from rest_framework import status
@@ -365,10 +366,10 @@ class LoginViewDBTests(APITestCase):
 
         login_hashed_key = generate_cache_key(self.user.id)
         login_failure_key = f"login_failures:{login_hashed_key}"
-        cache.set(login_failure_key, 2, timeout=3600)
+        cache.set(login_failure_key, 2, timeout=settings.LOGIN_FAILURE_ATTEMPT_TTL)
 
         dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"login_failures:{dummy_hash_key}"
+        dummy_key = f"ghost_failures:{dummy_hash_key}"
 
         user_lock_hash = generate_cache_key(self.user.id)
         user_lock_key = f"otp_cooldown:{user_lock_hash}"
@@ -397,10 +398,10 @@ class LoginViewDBTests(APITestCase):
 
         login_hashed_key = generate_cache_key(self.user.id)
         login_failure_key = f"login_failures:{login_hashed_key}"
-        cache.set(login_failure_key, 3, timeout=3600)
+        cache.set(login_failure_key, 3, timeout=settings.LOGIN_FAILURE_ATTEMPT_TTL)
 
         dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"login_failures:{dummy_hash_key}"
+        dummy_key = f"ghost_failures:{dummy_hash_key}"
 
         user_lock_hash = generate_cache_key(self.user.id)
         user_lock_key = f"otp_cooldown:{user_lock_hash}"
@@ -521,7 +522,7 @@ class LoginViewDBTests(APITestCase):
         login_failure_key = f"login_failures:{login_hashed_key}"
 
         dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"login_failures:{dummy_hash_key}"
+        dummy_key = f"ghost_failures:{dummy_hash_key}"
 
         # 3 attempts
         self.client.post(self.url, payload, format="json", **self.headers)
@@ -548,7 +549,7 @@ class LoginViewDBTests(APITestCase):
         login_failure_key = f"login_failures:{login_hashed_key}"
 
         dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"login_failures:{dummy_hash_key}"
+        dummy_key = f"ghost_failures:{dummy_hash_key}"
 
         # Attempt 1: First wrong password entry
         response = self.client.post(self.url, payload, format="json", **self.headers)
@@ -586,9 +587,9 @@ class LoginViewDBTests(APITestCase):
         login_failure_key = f"login_failures:{login_hashed_key}"
 
         dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"login_failures:{dummy_hash_key}"
+        dummy_key = f"ghost_failures:{dummy_hash_key}"
 
-        cache.set(login_failure_key, 4, timeout=3600)
+        cache.set(login_failure_key, 4, timeout=settings.LOGIN_FAILURE_ATTEMPT_TTL)
 
         response = self.client.post(self.url, payload, format="json", **self.headers)
 
@@ -630,7 +631,7 @@ class LoginViewDBTests(APITestCase):
         login_failure_key = f"login_failures:{login_hashed_key}"
 
         dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"login_failures:{dummy_hash_key}"
+        dummy_key = f"ghost_failures:{dummy_hash_key}"
 
         user_lock_key = generate_cache_key(self.user.id)
         cache_failure_key = f"otp_cooldown:{user_lock_key}"
@@ -665,7 +666,7 @@ class LoginViewDBTests(APITestCase):
 
         user_lock_hash = generate_cache_key(self.user.id)
         user_lock_key = f"otp_cooldown:{user_lock_hash}"
-        cache.set(user_lock_key, True, timeout=60)
+        cache.set(user_lock_key, True, timeout=settings.OTP_COOLDOWN_TTL)
 
         with patch("django.core.cache.cache.ttl", return_value=45, create=True):
             response = self.client.post(
@@ -678,3 +679,4 @@ class LoginViewDBTests(APITestCase):
             response.data["error"],
             "Please wait 45 seconds before requesting another OTP.",
         )
+        self.assertTrue(cache.get(user_lock_key))
