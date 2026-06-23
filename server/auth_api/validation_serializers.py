@@ -11,7 +11,7 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
     Also handles failed login attempt accounting and brute-force lockouts.
     """
 
-    def validate(self, attrs):
+    def validate(self, attrs):  # pylint: disable=R0912
         user = self.context.get("user")
         request = self.context.get("request")
 

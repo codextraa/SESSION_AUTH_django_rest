@@ -70,9 +70,8 @@ def verify_otp(raw_pre_auth_token, user_otp):
     Decrypts the minimal cache payload (user_id & otp) using a custom key.
     Returns user id.
     """
-    decrypted_data, error = decrypt_and_get_cache_data(
-        raw_pre_auth_token, "pre_auth")
-    
+    decrypted_data, error = decrypt_and_get_cache_data(raw_pre_auth_token, "pre_auth")
+
     if error:
         return {
             "error": error,
@@ -94,12 +93,12 @@ def verify_otp(raw_pre_auth_token, user_otp):
             )
 
         return {"error": "Invalid OTP"}
-    
+
     cache.delete(invalid_otp_key)
 
     user_lock_key = generate_cache_key(decrypted_data["user_id"])
     cache.delete(f"otp_cooldown:{user_lock_key}")
-    
+
     return {
         "user_id": decrypted_data["user_id"],
     }

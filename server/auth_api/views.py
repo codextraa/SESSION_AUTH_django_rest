@@ -28,7 +28,11 @@ from server.schema_serializers import (
 )
 from .utils import get_user_role, create_otp, verify_otp
 from .validation_serializers import ValidUserSerializer
-from .request_serializers import RecaptchaRequestSerializer, LoginRequestSerializer, TwoFARequestSerializer
+from .request_serializers import (
+    RecaptchaRequestSerializer,
+    LoginRequestSerializer,
+    TwoFARequestSerializer,
+)
 from .response_serializers import (
     CSRFTokenResponseSerializer,
     OTPResponseSerializer,
@@ -575,7 +579,7 @@ class LoginView(APIView):
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-        
+
 
 class TwoFAView(APIView):
     """2FA view."""
@@ -601,8 +605,7 @@ class TwoFAView(APIView):
     @extend_schema(
         summary="Generate Session ID",
         description=(
-            "Verifies OTP and generates Session ID "
-            "for the authenticated user."
+            "Verifies OTP and generates Session ID " "for the authenticated user."
         ),
         request=TwoFARequestSerializer,
         tags=["Authentication"],
@@ -699,17 +702,14 @@ class TwoFAView(APIView):
     def post(self, request, *args, **kwargs):  # pylint: disable=R0911, R0914
         """Post a request to TwoFA. Returns SessionID to the registered email."""
         try:
-            req_serializer = TwoFARequestSerializer(
-                data=request.data
-            )
+            req_serializer = TwoFARequestSerializer(data=request.data)
 
             req_serializer.is_valid(raise_exception=True)
 
             req_validated_data = req_serializer.validated_data
 
             otp_validation_success = verify_otp(
-                req_validated_data["pre_auth_token"], 
-                req_validated_data["otp"]
+                req_validated_data["pre_auth_token"], req_validated_data["otp"]
             )
 
             if otp_validation_success.get("error"):
@@ -717,7 +717,7 @@ class TwoFAView(APIView):
                     {"error": otp_validation_success["error"]},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-            
+
             user_id = otp_validation_success["user_id"]
 
             user = get_user_model().objects.get(id=user_id)
@@ -752,7 +752,7 @@ class TwoFAView(APIView):
 
             hashed_key = generate_cache_key(req_validated_data["pre_auth_token"])
             cache.delete(f"pre_auth:{hashed_key}")
- 
+
             return Response(token_res_serializer.data, status=status.HTTP_200_OK)
         except Exception as e:  # pylint: disable=W0718
             if isinstance(e, ValidationError):

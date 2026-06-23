@@ -88,7 +88,10 @@ class TwoFACooldownThrottle(BaseThrottle):
             invalid_otp_key = f"invalid_otp:{hashed_pre_auth_key}"
             invalid_otp_times = cache.get(invalid_otp_key)
 
-            if invalid_otp_times and invalid_otp_times >= settings.MAX_OTP_FAILURE_LIMIT:
+            if (
+                invalid_otp_times
+                and invalid_otp_times >= settings.MAX_OTP_FAILURE_LIMIT
+            ):
                 self.remaining_ttl = calculate_remaining_ttl(invalid_otp_key)
                 return False
 

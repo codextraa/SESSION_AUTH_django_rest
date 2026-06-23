@@ -54,7 +54,7 @@ def decrypt_and_get_cache_data(raw_pre_auth_token, prefix, obj=True):
 
         if not encrypted_data:
             return None, "Invalid Pre Auth Token"
-        
+
         encoded_encrypted_data = encrypted_data.encode()  # Convert to bytes
 
         cipher_suite = Fernet(
