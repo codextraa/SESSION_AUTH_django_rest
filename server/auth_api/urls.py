@@ -9,4 +9,5 @@ urlpatterns = [
         name="recaptcha-verify",
     ),
     path("login/", views.LoginView.as_view(), name="login"),
+    path("two-fa-login/", views.TwoFAView.as_view(), name="two-fa-login"),
 ]

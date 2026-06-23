@@ -3,6 +3,7 @@ from django.core.cache import cache
 from server.utils.encryption import (
     generate_cache_key,
     encrypt_and_set_cache_data,
+    decrypt_and_get_cache_data,
 )
 
 
@@ -42,7 +43,7 @@ def create_otp(user_id):
             "otp": OTP,
         }
         raw_pre_auth_token, error = encrypt_and_set_cache_data(
-            raw_cache_obj, "pre_auth", settings.OTP_TTL
+            raw_cache_obj, "pre_auth", settings.PRE_AUTH_OTP_TTL
         )
 
         if error:
@@ -61,3 +62,43 @@ def create_otp(user_id):
         }
 
     return {"success": False, "pre_auth_token": None}
+
+
+def verify_otp(raw_pre_auth_token, user_otp):
+    """
+    verify the OTP given by the user.
+    Decrypts the minimal cache payload (user_id & otp) using a custom key.
+    Returns user id.
+    """
+    decrypted_data, error = decrypt_and_get_cache_data(raw_pre_auth_token, "pre_auth")
+
+    if error:
+        return {
+            "error": error,
+        }
+
+    hashed_pre_auth_key = generate_cache_key(raw_pre_auth_token)
+    invalid_otp_key = f"invalid_otp:{hashed_pre_auth_key}"
+
+    if user_otp != decrypted_data["otp"]:
+        invalid_otp_cache_key = cache.get(invalid_otp_key)
+
+        if invalid_otp_cache_key is not None:
+            _ = cache.incr(invalid_otp_key)
+        else:
+            cache.set(
+                invalid_otp_key,
+                1,
+                timeout=settings.INVALID_OTP_COOLDOWN_TTL,
+            )
+
+        return {"error": "Invalid OTP"}
+
+    cache.delete(invalid_otp_key)
+
+    user_lock_key = generate_cache_key(decrypted_data["user_id"])
+    cache.delete(f"otp_cooldown:{user_lock_key}")
+
+    return {
+        "user_id": decrypted_data["user_id"],
+    }
