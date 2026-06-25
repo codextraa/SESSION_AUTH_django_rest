@@ -23,7 +23,8 @@ class CustomAuthBackend(ModelBackend):
             return None
 
         # Adding the user object to the request
-        request.authenticated_user_obj = user
+        if request is not None:
+            request.authenticated_user_obj = user
 
         if user.check_password(password) and self.user_can_authenticate(user):
             return user

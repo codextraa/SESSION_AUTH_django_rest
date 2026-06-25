@@ -10,7 +10,7 @@ from django.utils.decorators import method_decorator
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import ValidationError, Throttled
 from drf_spectacular.utils import (
     extend_schema,
@@ -780,4 +780,106 @@ class TwoFAView(APIView):
                 raise e
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class RefreshSessionView(APIView):
+    """Refresh and Rotate Session."""
+
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [ViewRenderer]
+
+    @extend_schema(
+        summary="Refresh and Rotate Session",
+        description=(
+            "Rotates the existing session ID cookie and "
+            "generates a fresh CSRF token to prevent token expiration."
+        ),
+        tags=["Authentication"],
+        request=None,
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                response=SessionResponseSerializer,
+                description="Session and CSRF tokens successfully refreshed.",
+            ),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Forbidden - Authentication failed",
+            ),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Internal Server Error",
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="Success Response",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "sessionid": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-SESSIONID",
+                    "session_expiry": "2026-06-17T12:34:56.789Z",
+                    "user_id": 42,
+                    "user_role": "Default",
+                    "csrf_token": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-CSRFTOKEN",
+                    "csrf_token_expiry": "2026-06-18T12:34:56.789Z",
+                },
+            ),
+            OpenApiExample(
+                name="Authentication Failed",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Authentication credentials were not provided."},
+            ),
+            OpenApiExample(
+                name="Internal Server Error",
+                response_only=True,
+                status_codes=["500"],
+                value={"error": "Failed to refresh session."},
+            ),
+        ],
+    )
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):
+        """Rotates the session key and returns fresh session and CSRF details."""
+        try:
+            # Issue a new session key by deleting old key from cache and db
+            request.session.cycle_key()
+
+            sessionid = request.session.session_key
+            session_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.SESSION_COOKIE_TTL)
+                - timedelta(seconds=10)
+            ).isoformat()
+
+            user = request.user
+
+            csrf_token = get_token(request)
+            csrf_token_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.CSRF_TOKEN_TTL)
+                - timedelta(seconds=10)
+            )
+
+            raw_data = {
+                "sessionid": sessionid,
+                "session_expiry": session_expiry,
+                "user_id": user.id,
+                "user_role": get_user_role(user),
+                "csrf_token": csrf_token,
+                "csrf_token_expiry": csrf_token_expiry,
+            }
+
+            token_res_serializer = SessionResponseSerializer(data=raw_data)
+
+            token_res_serializer.is_valid(raise_exception=True)
+
+            return Response(token_res_serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:  # pylint: disable=W0718
+            if isinstance(e, ValidationError):
+                raise e
+            return Response(
+                {"error": "Failed to refresh session."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
