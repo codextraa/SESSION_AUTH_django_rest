@@ -8,13 +8,13 @@ from rest_framework.test import APITestCase, APIClient
 User = get_user_model()
 
 
-class RefreshSessionViewTests(APITestCase):
-    """Integration tests for the RefreshSessionView endpoint without using mocks."""
+class LogoutViewTests(APITestCase):
+    """Integration tests for the LogoutView endpoint without using mocks."""
 
     def setUp(self):
         self.client = APIClient(enforce_csrf_checks=True)
 
-        self.url = reverse("refresh")
+        self.url = reverse("logout")
 
         self.user = User.objects.create_user(
             email="testuser@example.com",
@@ -53,8 +53,8 @@ class RefreshSessionViewTests(APITestCase):
     # SUCCESS TEST (200)
     # ==========================================
 
-    def test_refresh_session_success(self):
-        """An authenticated user can successfully rotate their session."""
+    def test_logout_success(self):
+        """An authenticated user can logout."""
         old_session_key = self.client.session.session_key
         old_cache_key = f"django.contrib.sessions.cached_db{old_session_key}"
         self.assertIsNotNone(cache.get(old_cache_key))
@@ -65,40 +65,16 @@ class RefreshSessionViewTests(APITestCase):
         response = self.client.post(self.url, format="json", **self.headers)
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        expected_keys = [
-            "sessionid",
-            "session_expiry",
-            "user_id",
-            "user_role",
-            "csrf_token",
-            "csrf_token_expiry",
-        ]
-        for key in expected_keys:
-            self.assertIn(key, response.data)
-            self.assertIsNotNone(response.data[key])
-
-        self.assertEqual(response.data["user_id"], self.user.id)
-
-        new_session_key = response.data["sessionid"]
-        new_cache_key = f"django.contrib.sessions.cached_db{new_session_key}"
-        self.assertNotEqual(old_session_key, new_session_key)
+        self.assertEqual(response.data, {"success": "Logged out successfully"})
 
         self.assertFalse(Session.objects.filter(session_key=old_session_key).exists())
         self.assertIsNone(cache.get(old_cache_key))
-
-        self.assertTrue(Session.objects.filter(session_key=new_session_key).exists())
-        new_cached_data = cache.get(new_cache_key)
-        self.assertIsNotNone(new_cached_data)
-
-        # Verify the new session has the correct user_id
-        self.assertEqual(new_cached_data.get("_auth_user_id"), str(self.user.id))
 
     # ==========================================
     # UNAUTHORIZED TEST (403)
     # ==========================================
 
-    def test_refresh_session_unauthorized(self):
+    def test_logout_unauthorized(self):
         """A user without an active session cannot access the view."""
         self.client.logout()
 
@@ -110,7 +86,7 @@ class RefreshSessionViewTests(APITestCase):
     # CSRFTOKEN FAILURE TEST
     # ==========================================
 
-    def test_refresh_session_fails_when_csrf_token_is_missing(self):
+    def test_logout_fails_when_csrf_token_is_missing(self):
         """Ensure the view rejects requests completely if CSRF is absent."""
         csrf_less_headers = {
             "HTTP_USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
