@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.middleware.csrf import get_token
 from django.core.cache import cache
-from django.contrib.auth import authenticate, login, get_user_model
+from django.contrib.auth import authenticate, login, logout, get_user_model
 from django.views.decorators.csrf import csrf_protect
 from django.utils.decorators import method_decorator
 from rest_framework import status
@@ -882,4 +882,77 @@ class RefreshSessionView(APIView):
             return Response(
                 {"error": "Failed to refresh session."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+
+class LogoutView(APIView):
+    """Logout View."""
+
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [ViewRenderer]
+
+    @extend_schema(
+        summary="Logout and invalidate session",
+        description=(
+            "Logs out the authenticated user. This flushes the active session, "
+            "clears backend caches associated with the session state, and instructs "
+            "the infrastructure to clear active anti-CSRF cookies and session headers."
+        ),
+        request=None,
+        tags=["Authentication"],
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                response=SuccessResponseSerializer,
+                description="Success - Successfully logged out",
+            ),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Unauthorized - Missing or invalid session/credentials",
+            ),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Internal Server Error.",
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="Logout Success Example",
+                response_only=True,
+                status_codes=["200"],
+                value={"success": "Logged out successfully"},
+            ),
+            OpenApiExample(
+                name="Unauthorized Example",
+                response_only=True,
+                status_codes=["401"],
+                value={"detail": "Authentication credentials were not provided."},
+            ),
+            OpenApiExample(
+                name="Internal Server Error",
+                response_only=True,
+                status_codes=["500"],
+                value={"error": "Internal Server Error"},
+            ),
+        ],
+    )
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):
+        """Post a request to logout. Flushes session details cleanly."""
+        try:
+            session_key = request.session.session_key
+
+            if session_key and hasattr(request.session, "delete"):
+                try:
+                    request.session.delete(session_key)
+                except Exception:  # pylint: disable=W0718
+                    pass  # Fail silently if session does not exist
+
+            logout(request)
+
+            return Response(
+                {"success": "Logged out successfully"}, status=status.HTTP_200_OK
+            )
+        except Exception as e:  # pylint: disable=W0718
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
