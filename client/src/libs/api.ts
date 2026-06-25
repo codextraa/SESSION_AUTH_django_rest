@@ -23,7 +23,7 @@ export const getCSRFToken = async (): Promise<CSRFTokenResponse> => {
 };
 
 export const refreshSession = async (): Promise<SessionResponse> => {
-  return apiClient.get("/refresh/");
+  return apiClient.post("/refresh/", {});
 };
 
 // export const reCaptchaVerify = async (
