@@ -1,3 +1,5 @@
+"""Views for Auth API."""  # pylint: disable=C0302
+
 from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.middleware.csrf import get_token
@@ -145,6 +147,15 @@ class RecaptchaValidationView(APIView):
             ),
         },
         examples=[
+            OpenApiExample(
+                name="reCAPTCHA Request Example",
+                request_only=True,
+                value={
+                    "recaptcha_token": "03AFcWeA7V_u-R8N_m7N1wXzO3K7L-reCAPTCHA-TOKEN",
+                    "recaptcha_version": "v3",
+                    "expected_action": "login",
+                },
+            ),
             OpenApiExample(
                 name="Success",
                 response_only=True,
@@ -313,23 +324,32 @@ class LoginView(APIView):
         examples=[
             OpenApiExample(
                 name="Superuser Login Request Example",
+                request_only=True,
                 value={
                     "email": "superuser@example.com",
                     "password": "Django@123",
+                    "recaptcha_token": "03AFcWeA7V_u-R8N_m7N1wXzO3K7L-reCAPTCHA-TOKEN",
+                    "recaptcha_version": "v3",
                 },
             ),
             OpenApiExample(
                 name="Staff Login Request Example",
+                request_only=True,
                 value={
                     "email": "staffuser@example.com",
                     "password": "Django@123",
+                    "recaptcha_token": "03AFcWeA7V_u-R8N_m7N1wXzO3K7L-reCAPTCHA-TOKEN",
+                    "recaptcha_version": "v3",
                 },
             ),
             OpenApiExample(
                 name="Default User Login Request Example",
+                request_only=True,
                 value={
                     "email": "defaultuser@example.com",
                     "password": "Django@123",
+                    "recaptcha_token": "03AFcWeA7V_u-R8N_m7N1wXzO3K7L-reCAPTCHA-TOKEN",
+                    "recaptcha_version": "v3",
                 },
             ),
             OpenApiExample(
@@ -634,6 +654,7 @@ class TwoFAView(APIView):
         examples=[
             OpenApiExample(
                 name="2FA Request Example",
+                request_only=True,
                 value={
                     "pre-auth-token": "kdslfjs0f9ujse8fhse8fs-PRE-AUTH-TOKEN",
                     "otp": "000000",
