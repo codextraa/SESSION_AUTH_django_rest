@@ -55,7 +55,7 @@ class LoginViewTests(APITestCase):
     # ==========================================
 
     def test_missing_email_or_username(self):
-        """Test 400 bad request when recaptcha_token is missing."""
+        """Test 400 bad request when email or username is missing."""
         payload = self.valid_payload.copy()
         del payload["email_or_username"]
 
@@ -88,7 +88,7 @@ class LoginViewTests(APITestCase):
         )
 
     def test_missing_password(self):
-        """Test 400 bad request when recaptcha_token is missing."""
+        """Test 400 bad request when password is missing."""
         payload = self.valid_payload.copy()
         del payload["password"]
 
@@ -430,7 +430,7 @@ class LoginViewDBTests(APITestCase):
         self.assertIsNone(cache.get(dummy_key))
 
     # ==========================================
-    # AUTHENTICATED USER STATE VALIDATION (400)
+    # AUTHENTICATED USER STATE VALIDATION (403)
     # ==========================================
 
     @patch(

@@ -40,7 +40,7 @@ class TwoFAViewTests(APITestCase):
     # ==========================================
 
     def test_missing_pre_auth_token(self):
-        """Test 400 bad request when recaptcha_token is missing."""
+        """Test 400 bad request when pre auth token is missing."""
         payload = self.valid_payload.copy()
         del payload["pre_auth_token"]
 
@@ -67,7 +67,7 @@ class TwoFAViewTests(APITestCase):
         self.assertEqual(response.data["pre_auth_token"][0], "Token is required.")
 
     def test_missing_otp(self):
-        """Test 400 bad request when recaptcha_token is missing."""
+        """Test 400 bad request when otp is missing."""
         payload = self.valid_payload.copy()
         del payload["otp"]
 
