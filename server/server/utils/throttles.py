@@ -1,6 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.db.models import Q
+from django.conf import settings
 from rest_framework.throttling import BaseThrottle
 from server.utils.encryption import generate_cache_key
 
@@ -22,7 +23,7 @@ def calculate_remaining_ttl(cache_key):
 
 class OTPCooldownThrottle(BaseThrottle):
     def __init__(self):
-        self.remaining_ttl = 60
+        self.remaining_ttl = settings.OTP_COOLDOWN_TTL
 
     def allow_request(self, request, view):  # pylint: disable=R0911
         """
@@ -41,15 +42,57 @@ class OTPCooldownThrottle(BaseThrottle):
                 user = User.objects.only("id").get(
                     Q(email__exact=clean_input.lower()) | Q(username__exact=clean_input)
                 )
-                user_id = user.id
             except User.DoesNotExist:
-                return True  # Serializer will return 400
+                # Dummy key for burning expected CPU cycles to neutralize timing attacks
+                dummy_hash_key = generate_cache_key("ghost_user")
+                dummy_key = f"login_failures:{dummy_hash_key}"
 
-            user_lock_key = generate_cache_key(user_id)
+                _ = cache.get(dummy_key)
+
+                return True  # reCAPTCHA will handle this
+
+            user_lock_key = generate_cache_key(user.id)
             user_cache_key = f"otp_cooldown:{user_lock_key}"
 
             if cache.get(user_cache_key):
                 self.remaining_ttl = calculate_remaining_ttl(user_cache_key)
+                return False
+
+        return True
+
+    def wait(self):
+        """
+        Return the number of seconds to wait for the next request.
+        """
+        return self.remaining_ttl
+
+
+class TwoFACooldownThrottle(BaseThrottle):
+    def __init__(self):
+        self.remaining_ttl = settings.INVALID_OTP_COOLDOWN_TTL
+
+    def allow_request(self, request, view):  # pylint: disable=R0911
+        """
+        Return `True` if the request should be allowed, `False` otherwise.
+        """
+
+        pre_auth_token = (
+            request.data.get("pre_auth_token")
+            if isinstance(request.data, dict)
+            else None
+        )
+
+        if pre_auth_token:
+            clean_input = str(pre_auth_token).strip()
+            hashed_pre_auth_key = generate_cache_key(clean_input)
+            invalid_otp_key = f"invalid_otp:{hashed_pre_auth_key}"
+            invalid_otp_times = cache.get(invalid_otp_key)
+
+            if (
+                invalid_otp_times
+                and invalid_otp_times >= settings.MAX_OTP_FAILURE_LIMIT
+            ):
+                self.remaining_ttl = calculate_remaining_ttl(invalid_otp_key)
                 return False
 
         return True

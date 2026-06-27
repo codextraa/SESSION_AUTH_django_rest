@@ -57,9 +57,13 @@ class BaseRecaptchaSerializer(serializers.Serializer):  # pylint: disable=W0223
                 {"user_agent": "Missing User Agent Header."}
             )
 
-        user_ip = request.META.get(
-            "HTTP_X_FORWARDED_FOR", request.META.get("HTTP_X_REAL_IP", "")
-        )
+        user_ip = request.META.get("HTTP_CF_CONNECTING_IP")
+
+        if not user_ip:
+            user_ip = request.META.get(
+                "HTTP_X_FORWARDED_FOR", request.META.get("HTTP_X_REAL_IP", "")
+            )
+
         if not user_ip:
             raise BadRequestValidationError({"user_ip": "Missing User IP Address."})
 

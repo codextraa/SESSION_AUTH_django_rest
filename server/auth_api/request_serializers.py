@@ -48,3 +48,34 @@ class LoginRequestSerializer(BaseRecaptchaSerializer):  # pylint: disable=W0223
             "null": "Password is required.",
         },
     )
+
+
+class TwoFARequestSerializer(serializers.Serializer):  # pylint: disable=W0223
+    """
+    Handles 2FA credentials.
+    """
+
+    # pylint: disable=R0801
+    pre_auth_token = serializers.CharField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        help_text="The raw pre-auth token to be used in subsequent requests.",
+        error_messages={
+            "required": "Token is required.",
+            "blank": "Token is required.",
+            "null": "Token is required.",
+        },
+    )
+    # pylint: enable=R0801
+
+    otp = serializers.IntegerField(
+        required=True,
+        allow_null=False,
+        help_text="The One Time Password to be used in subsequent requests.",
+        error_messages={
+            "required": "OTP is required.",
+            "null": "OTP is required.",
+            "invalid": "OTP is invalid.",
+        },
+    )

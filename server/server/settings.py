@@ -284,13 +284,13 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAdminUser",
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
-    "DEFAULT_THROTTLE_CLASSES": ("rest_framework.throttling.ScopedRateThrottle",),
-    "DEFAULT_THROTTLE_RATES": {
-        "email_otp": "15/min",
-        "email_verify": "15/min",
-        "password_reset": "15/min",
-        "phone_otp": "15/min",
-    },
+    "DEFAULT_THROTTLE_CLASSES": (),
+    # "DEFAULT_THROTTLE_RATES": {
+    #     "email_otp": "15/min",
+    #     "email_verify": "15/min",
+    #     "password_reset": "15/min",
+    #     "phone_otp": "15/min",
+    # },
     "ORDERING_PARAM": "ordering",
 }
 
@@ -337,8 +337,10 @@ SPECTACULAR_SETTINGS = {
 
 SESSION_COOKIE_TTL = 24 * 60 * 60 + 10  # 1 day and 10 seconds
 CSRF_TOKEN_TTL = 24 * 60 * 60 + 10  # 1 day and 10 seconds
-OTP_TTL = 10 * 60  # 10 minutes
+PRE_AUTH_OTP_TTL = 10 * 60  # 10 minutes
 OTP_COOLDOWN_TTL = 60  # 1 minute
+DUMMY_COOLDOWN_TTL = 600  # 10 minutes
+INVALID_OTP_COOLDOWN_TTL = 60  # 1 minute
 LOGIN_FAILURE_ATTEMPT_TTL = 60 * 60  # 1 hour
 
 # Session Settings
@@ -390,6 +392,7 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 
 # Security Settings
 MAX_LOGIN_FAILURE_LIMIT = 5
+MAX_OTP_FAILURE_LIMIT = 3
 SECURE_PROXY_SSL_HEADER = (
     "HTTP_X_FORWARDED_PROTO",
     "https",
