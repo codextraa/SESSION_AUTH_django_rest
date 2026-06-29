@@ -5,6 +5,8 @@ import {
   SessionResponse,
   CreateUserData,
   CreateUserAPIResponse,
+  TwoFALoginInput,
+  TwoFASessionResponse,
 } from "@/types/types";
 
 const HTTPS = process.env.HTTPS === "true";
@@ -49,4 +51,10 @@ export const createUser = async (
   userData: CreateUserData,
 ): Promise<CreateUserAPIResponse> => {
   return apiClient.post("/users/", userData);
+};
+
+export const twoFALogin = async (
+  credentials: TwoFALoginInput,
+): Promise<TwoFASessionResponse> => {
+  return apiClient.post("/2fa-login/", credentials);
 };

@@ -14,6 +14,7 @@ import { createUserAction } from "@/actions/userActions";
 import { SignUpFormState } from "@/types/types";
 import {
   FormButton,
+  EyeButton,
   GoogleLoginButton,
   FacebookLoginButton,
   GitHubLoginButton,
@@ -47,6 +48,18 @@ export default function SignUpForm() {
   const v2WidgetIdRef = useRef<number | null>(null);
   const lastFetchTimeRef = useRef<number>(0);
   const formRef = useRef<HTMLFormElement | null>(null);
+
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
+
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword((prev) => !prev);
+  };
 
   const executeV3Telemetry = useCallback(() => {
     if (!v3SiteKey || currentVersion !== "v3" || !window.grecaptcha?.enterprise)
@@ -317,6 +330,11 @@ export default function SignUpForm() {
                 placeholder="Password*"
                 className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] pr-[20px] font-['Merriweather'] font-normal text-[16px] text-[#000000] placeholder-[#000000] focus:outline-none focus:border-[#263775] transition-all"
               />
+              <EyeButton
+                action={togglePasswordVisibility}
+                showPassword={showPassword}
+                isPending={isPending}
+              />
             </div>
             {state &&
               "error" in state &&
@@ -350,6 +368,11 @@ export default function SignUpForm() {
                 required
                 placeholder="Confirm Password*"
                 className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] pr-[20px] font-['Merriweather'] font-normal text-[16px] text-[#000000] placeholder-[#000000] focus:outline-none focus:border-[#263775] transition-all"
+              />
+              <EyeButton
+                action={toggleConfirmPasswordVisibility}
+                showPassword={showConfirmPassword}
+                isPending={isPending}
               />
             </div>
             {state &&

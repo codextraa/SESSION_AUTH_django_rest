@@ -12,9 +12,10 @@ import {
 } from "react";
 import { loginAction } from "@/actions/authActions";
 import { PrevStateLoginForm } from "@/types/types";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 import {
   FormButton,
+  EyeButton,
   GoogleLoginButton,
   FacebookLoginButton,
   GitHubLoginButton,
@@ -35,6 +36,7 @@ export default function LoginForm() {
     initialState,
   );
 
+  const router = useRouter();
   const [v3SiteKey, setV3SiteKey] = useState<string>("");
   const [recaptchaToken, setRecaptchaToken] = useState<string>("");
   const [currentVersion, setCurrentVersion] = useState<"v3" | "v2">("v3");
@@ -44,6 +46,12 @@ export default function LoginForm() {
   const v2WidgetIdRef = useRef<number | null>(null);
 
   const lastFetchTimeRef = useRef<number>(0);
+
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+
+  const togglePasswordVisibility = () => {
+    setShowPassword((prev) => !prev);
+  };
 
   const executeV3Telemetry = useCallback(() => {
     if (!v3SiteKey || currentVersion !== "v3" || !window.grecaptcha?.enterprise)
@@ -62,20 +70,32 @@ export default function LoginForm() {
     });
   }, [v3SiteKey, currentVersion]);
 
-  if (
-    state &&
-    "success" in state &&
-    state.success &&
-    "pre_auth_token" in state
-  ) {
-    if (state.pre_auth_token) {
-      //! eslint gives error fix it
-      sessionStorage.setItem("otpExpiry", (Date.now() + 600000).toString());
-      redirect("/auth/otp");
-    } else {
-      redirect(DEFAULT_LOGIN_REDIRECT);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+
+    if (
+      state &&
+      "success" in state &&
+      state.success &&
+      typeof state.success === "string" &&
+      state.success.length > 0
+    ) {
+      if ("pre_auth_token" in state && state.pre_auth_token) {
+        sessionStorage.setItem("otpExpiry", (Date.now() + 600000).toString());
+        timer = setTimeout(() => {
+          router.push("/auth/otp");
+        }, 3000);
+      } else {
+        timer = setTimeout(() => {
+          router.push(DEFAULT_LOGIN_REDIRECT);
+        }, 3000);
+      }
     }
-  }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [state, router]);
 
   useEffect(() => {
     async function fetchV3Key() {
@@ -261,11 +281,11 @@ export default function LoginForm() {
                 </p>
               )}
 
-            <div className="w-full h-[42px]">
+            <div className="w-full h-[42px] relative">
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 disabled={isPending}
                 defaultValue={
@@ -274,12 +294,20 @@ export default function LoginForm() {
                     : ""
                 }
                 placeholder="Password*"
-                className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] font-['Merriweather'] font-normal text-[16px] leading-[20px] text-[#000000] placeholder-[#000000] focus:outline-none"
+                className="w-full h-full box-border bg-transparent border-2 border-[#000000] rounded-[93px] pl-[20px] pr-[45px] font-['Merriweather'] font-normal text-[16px] leading-[20px] text-[#000000] placeholder-[#000000] focus:outline-none"
               />
-              <p className="pl-[20px] pr-[20px] font-['Merriweather'] font-weight-[400] text-[10px] text-[#000000]">
+              <EyeButton
+                action={togglePasswordVisibility}
+                showPassword={showPassword}
+                isPending={isPending}
+              />
+            </div>
+
+            <div className="flex flex-col gap-0.5">
+              <p className="pl-[20px] pr-[20px] font-['Merriweather'] font-normal text-[10px] text-[#000000]">
                 Password must be at least 8 characters.
               </p>
-              <p className="pl-[20px] pr-[20px] font-['Merriweather'] font-weight-[400] text-[10px] text-[#000000]">
+              <p className="pl-[20px] pr-[20px] font-['Merriweather'] font-normal text-[10px] text-[#000000]">
                 Must include at least one uppercase letter, one lowercase
                 letter, one number, one special character.
               </p>
