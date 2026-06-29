@@ -11,6 +11,7 @@ import {
   setSessionCookie,
   setPreAuthCookie,
   getPreAuthTokenFromSession,
+  deletePreAuthCookie,
 } from "@/libs/cookie";
 
 const userError = async (response: object): Promise<LoginErrorFields> => {
@@ -321,6 +322,7 @@ export async function twoFALoginAction(
       typeof response.csrf_token_expiry === "string"
     ) {
       await setSessionCookie(response);
+      await deletePreAuthCookie();
       return {
         success: "Login Successful.",
         error: {},

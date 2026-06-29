@@ -56,5 +56,5 @@ export const createUser = async (
 export const twoFALogin = async (
   credentials: TwoFALoginInput,
 ): Promise<TwoFASessionResponse> => {
-  return apiClient.post("/2fa-login/", credentials);
+  return apiClient.post("/two-fa-login/", credentials);
 };
