@@ -52,23 +52,6 @@ export class ApiClient {
         };
       }
 
-      if (response.status === 429) {
-        if (contentType.includes("application/json")) {
-          const errorResponse = await response.json();
-          const errorMessage = errorResponse.errors;
-
-          try {
-            const match = errorMessage.match(/(\d+) second(s)?/);
-            return {
-              error: `Validation already sent. Please try again in ${match[1]} seconds.`,
-            };
-          } catch (error) {
-            console.error("Error parsing error message:", error);
-            return { error: `Validation already sent. Please try again.` };
-          }
-        }
-      }
-
       if (contentType.includes("application/json")) {
         try {
           const errorData = await response.json();

@@ -63,6 +63,8 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
                         user_obj.is_active = False
                         user_obj.save()
 
+                    cache.delete(failed_attempts_key)
+
                     raise BadRequestValidationError(
                         {
                             "error": (

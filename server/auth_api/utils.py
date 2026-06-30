@@ -29,7 +29,7 @@ def create_otp(user_id):
     Encrypts the minimal cache payload (user_id & otp) using a custom key.
     Returns the raw pre-auth token to the frontend.
     """
-    OTP = 000000
+    OTP = "000000"  # remember to convert it to string during actual implementation
     otp_email_sent = True
 
     # ? Will be implemented during email workflows

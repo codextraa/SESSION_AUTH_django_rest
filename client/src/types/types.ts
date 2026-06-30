@@ -84,7 +84,7 @@ export interface PrevStateTwoFALoginForm {
 
 export interface TwoFALoginInput {
   pre_auth_token: string | unknown | undefined;
-  otp: number | string | undefined;
+  otp: string | unknown | undefined;
 }
 
 export type TwoFASessionAPIResponse = SessionResponseSuccess | ErrorResponse;
