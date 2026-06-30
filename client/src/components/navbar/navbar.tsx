@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { authRoute } from "@/route";
+import { authRoute, DEFAULT_LOGIN_REDIRECT } from "@/route";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import UpdateAlert from "@/components/alerts/UpdateAlert";
 import { TextNavLink, ActionNavButton } from "@/components/buttons/button";
+import { logoutAction } from "@/actions/authActions";
 
 interface NavbarProps {
   initialSession: string | null;
@@ -17,6 +19,8 @@ export default function Navbar({ initialSession, initialRole }: NavbarProps) {
 
   const [session, setSession] = useState<string | null>(initialSession);
   const [role, setRole] = useState<string | null>(initialRole);
+  const [alert, setAlert] = useState<boolean>(false);
+  const [responseMessage, setResponseMessage] = useState<object | string>({});
 
   useEffect(() => {
     setSession(initialSession);
@@ -28,13 +32,24 @@ export default function Navbar({ initialSession, initialRole }: NavbarProps) {
   }
 
   const handleLogout = async () => {
-    // Optional backend api trigger: await fetch('/api/auth/logout', { method: 'POST' });
-    router.refresh();
-    router.push("/auth/login");
+    const response = await logoutAction();
+    if (response && "error" in response && response.error) {
+      setAlert(true);
+      setResponseMessage(response);
+    } else if (response && "success" in response && response.success) {
+      setAlert(true);
+      setResponseMessage(response);
+    } else {
+      setAlert(true);
+      setResponseMessage("Logout failed");
+    }
+
+    router.push(DEFAULT_LOGIN_REDIRECT);
   };
 
   return (
     <nav className="w-full min-h-[31px] py-4 px-6 pt-[15px] md:px-[80px] flex flex-row items-center justify-between px-6 z-[100]">
+      <UpdateAlert alert={alert} message={responseMessage} />
       <Link
         href="/"
         className="w-[48px] h-[25px] font-['Merriweather'] font-bold text-[20px] leading-[25px] text-center text-black"

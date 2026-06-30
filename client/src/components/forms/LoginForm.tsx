@@ -167,6 +167,17 @@ export default function LoginForm() {
             const response = await fetch("/api/recaptcha-key-v2");
             const data = await response.json();
             if (data.sitekey) {
+              const container = document.getElementById("recaptcha-container");
+              // If the container node isn't mounted in the DOM yet due to state-batching delays,
+              // defer the rendering process by one frame to let Next.js finish layout rendering.
+              if (!container) {
+                setTimeout(() => window.onloadCallback?.(), 50);
+                return;
+              }
+
+              // Safely clear out inner DOM structures constructed by previous script execution chains
+              container.innerHTML = "";
+
               const widgetId = window.grecaptcha.enterprise.render(
                 "recaptcha-container",
                 {

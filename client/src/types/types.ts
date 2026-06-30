@@ -87,7 +87,9 @@ export interface TwoFALoginInput {
   otp: number | string | undefined;
 }
 
-export type TwoFASessionResponse = SessionResponseSuccess | ErrorResponse;
+export type TwoFASessionAPIResponse = SessionResponseSuccess | ErrorResponse;
+
+export type LogoutAPIResponse = SuccessResponse | ErrorResponse;
 
 /* eslint-disable no-unused-vars */
 declare global {

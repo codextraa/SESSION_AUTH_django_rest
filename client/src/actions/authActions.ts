@@ -1,14 +1,16 @@
 "use server";
 
-import { login, twoFALogin } from "@/libs/api";
+import { login, twoFALogin, logout } from "@/libs/api";
 import {
   PrevStateLoginForm,
   LoginErrorFields,
   TwoFAErrorFields,
   PrevStateTwoFALoginForm,
+  LogoutAPIResponse,
 } from "@/types/types";
 import {
   setSessionCookie,
+  deleteSessionCookie,
   setPreAuthCookie,
   getPreAuthTokenFromSession,
   deletePreAuthCookie,
@@ -124,8 +126,6 @@ export async function loginAction(
     localErrors.email_or_username = "Invalid form data submission.";
   } else if (!email_or_username) {
     localErrors.email_or_username = "Email or username is required.";
-  } else if (!email_or_username.includes("@")) {
-    localErrors.email_or_username = "Invalid email format.";
   }
 
   if (typeof password !== "string") {
@@ -165,7 +165,7 @@ export async function loginAction(
 
   try {
     const response = await login(credentials);
-    // const response = {"error": "High risk transaction blocked. Score: 0.3"};
+    // const response = {"error": "reCAPTCHA validation failed"};
     if (response && "error" in response && response.error) {
       if (
         typeof response.error === "string" &&
@@ -342,6 +342,28 @@ export async function twoFALoginAction(
       error: {
         general: "An error occurred during login.",
       },
+    };
+  }
+}
+
+export async function logoutAction(): Promise<LogoutAPIResponse> {
+  // return await logout();
+  try {
+    const response = await logout();
+    if (response && "error" in response && response.error) {
+      return response;
+    } else if (response && "success" in response && response.success) {
+      await deleteSessionCookie();
+      return response;
+    } else {
+      return {
+        error: "Logout failed",
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      error: "An error occurred during logout.",
     };
   }
 }

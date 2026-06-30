@@ -1,4 +1,3 @@
-import React from "react";
 import OTPVerificationForm from "@/components/forms/OTPVerificationForm";
 
 export default function OTPVerificationPage() {
