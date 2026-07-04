@@ -6,26 +6,12 @@ const updateAlertIcon = "/assets/update-alert-icon.svg";
 
 interface UpdateAlertProps {
   alert: boolean;
-  message: string | object;
+  message: string;
 }
 
 export default function UpdateAlert({ alert, message }: UpdateAlertProps) {
   const [isAlertVisible, setIsAlertVisible] = useState<boolean>(false);
   const [isExiting, setIsExiting] = useState<boolean>(false);
-
-  let messageResponse = "An error occurred";
-
-  if (typeof message === "string") {
-    messageResponse = message;
-  } else if (message && typeof message === "object") {
-    if ("detail" in message && typeof message.detail === "string") {
-      messageResponse = message.detail;
-    } else if ("general" in message && typeof message.general === "string") {
-      messageResponse = message.general;
-    } else if ("error" in message && typeof message.error === "string") {
-      messageResponse = message.error;
-    }
-  }
 
   useEffect(() => {
     let exitTimer: NodeJS.Timeout;
@@ -91,7 +77,7 @@ export default function UpdateAlert({ alert, message }: UpdateAlertProps) {
               className="w-full h-full object-contain"
             />
           </div>
-          <span>{messageResponse}</span>
+          <span>{message}</span>
         </div>
       )}
     </>
