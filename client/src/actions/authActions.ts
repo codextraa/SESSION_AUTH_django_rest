@@ -1,8 +1,20 @@
 "use server";
 
-import { login } from "@/libs/api";
-import { PrevStateLoginForm, LoginErrorFields } from "@/types/types";
-import { setSessionCookie, setPreAuthCookie } from "@/libs/cookie";
+import { login, twoFALogin, logout } from "@/libs/api";
+import {
+  PrevStateLoginForm,
+  LoginErrorFields,
+  TwoFAErrorFields,
+  PrevStateTwoFALoginForm,
+  LogoutAPIResponse,
+} from "@/types/types";
+import {
+  setSessionCookie,
+  deleteSessionCookie,
+  setPreAuthCookie,
+  getPreAuthTokenFromSession,
+  deletePreAuthCookie,
+} from "@/libs/cookie";
 
 const userError = async (response: object): Promise<LoginErrorFields> => {
   if (
@@ -56,6 +68,46 @@ const userError = async (response: object): Promise<LoginErrorFields> => {
   };
 };
 
+const twoFAError = async (response: object): Promise<TwoFAErrorFields> => {
+  if (
+    typeof response === "object" &&
+    "error" in response &&
+    response.error &&
+    typeof response.error === "object"
+  ) {
+    const backendErrors = response.error as Record<string, string[]>;
+
+    const errorMessages: TwoFAErrorFields = {};
+
+    if (backendErrors.pre_auth_token?.[0]) {
+      const msg = backendErrors.pre_auth_token[0];
+      errorMessages.pre_auth_token =
+        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
+    }
+
+    if (backendErrors.otp?.[0]) {
+      const msg = backendErrors.otp[0];
+      errorMessages.otp =
+        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
+    }
+
+    return errorMessages;
+  } else if (
+    typeof response === "object" &&
+    "error" in response &&
+    response.error &&
+    typeof response.error === "string"
+  ) {
+    return {
+      general: response.error,
+    };
+  }
+
+  return {
+    general: "An error occurred during login.",
+  };
+};
+
 export async function loginAction(
   prevState: PrevStateLoginForm,
   formData: FormData,
@@ -74,8 +126,6 @@ export async function loginAction(
     localErrors.email_or_username = "Invalid form data submission.";
   } else if (!email_or_username) {
     localErrors.email_or_username = "Email or username is required.";
-  } else if (!email_or_username.includes("@")) {
-    localErrors.email_or_username = "Invalid email format.";
   }
 
   if (typeof password !== "string") {
@@ -115,7 +165,7 @@ export async function loginAction(
 
   try {
     const response = await login(credentials);
-    // const response = {"error": "High risk transaction blocked. Score: 0.3"};
+    // const response = { "error": "reCAPTCHA validation failed" };
     if (response && "error" in response && response.error) {
       if (
         typeof response.error === "string" &&
@@ -206,6 +256,113 @@ export async function loginAction(
       },
       email_or_username: "",
       password: "",
+    };
+  }
+}
+export async function twoFALoginAction(
+  prevState: PrevStateTwoFALoginForm,
+  formData: FormData,
+): Promise<PrevStateTwoFALoginForm> {
+  const pre_auth_token = await getPreAuthTokenFromSession();
+  const otp = formData.get("otp")?.toString().trim() || "";
+
+  const localErrors: TwoFAErrorFields = {};
+
+  if (typeof pre_auth_token !== "string") {
+    localErrors.pre_auth_token = "Invalid form data submission.";
+  } else if (!pre_auth_token) {
+    localErrors.pre_auth_token = "Token is not generated.";
+  }
+
+  if (typeof otp !== "string" || typeof parseInt(otp) !== "number") {
+    localErrors.otp = "Invalid form data submission.";
+  } else if (!otp) {
+    localErrors.otp = "OTP is required.";
+  }
+
+  if (Object.keys(localErrors).length > 0) {
+    return {
+      success: "",
+      error: localErrors,
+    };
+  }
+
+  const data = {
+    pre_auth_token: pre_auth_token,
+    otp: otp,
+  };
+
+  try {
+    const response = await twoFALogin(data);
+    if (response && "error" in response && response.error) {
+      const TwoFAErrorResponse = await twoFAError(response);
+      return {
+        success: "",
+        error: TwoFAErrorResponse,
+      };
+    } else if (
+      typeof response === "object" &&
+      "sessionid" in response &&
+      response.sessionid &&
+      typeof response.session_expiry === "string" &&
+      "session_expiry" in response &&
+      response.session_expiry &&
+      typeof response.session_expiry === "string" &&
+      "user_id" in response &&
+      response.user_id &&
+      typeof response.user_id === "number" &&
+      "user_role" in response &&
+      response.user_role &&
+      typeof response.user_role === "string" &&
+      "csrf_token" in response &&
+      response.csrf_token &&
+      typeof response.csrf_token === "string" &&
+      "csrf_token_expiry" in response &&
+      response.csrf_token_expiry &&
+      typeof response.csrf_token_expiry === "string"
+    ) {
+      await setSessionCookie(response);
+      await deletePreAuthCookie();
+      return {
+        success: "Login Successful.",
+        error: {},
+      };
+    } else {
+      return {
+        success: "",
+        error: {
+          general: "An error occurred during login.",
+        },
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      success: "",
+      error: {
+        general: "An error occurred during login.",
+      },
+    };
+  }
+}
+
+export async function logoutAction(): Promise<LogoutAPIResponse> {
+  try {
+    const response = await logout();
+    if (response && "error" in response && response.error) {
+      return response;
+    } else if (response && "success" in response && response.success) {
+      await deleteSessionCookie();
+      return response;
+    } else {
+      return {
+        error: "Logout failed",
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      error: "An error occurred during logout.",
     };
   }
 }

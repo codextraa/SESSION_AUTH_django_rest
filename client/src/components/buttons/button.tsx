@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useFormStatus } from "react-dom";
+import { useRouter } from "next/navigation";
 
 interface TextNavLinkProps {
   href: string;
@@ -143,6 +145,78 @@ export function GitHubLoginButton() {
           <path d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.9-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.07 2.91.83.1-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.6 1.03 2.69 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2z" />
         </svg>
       </div>
+    </button>
+  );
+}
+
+interface EyeButtonProps {
+  action: () => void;
+  showPassword: boolean;
+  isPending: boolean;
+}
+
+export function EyeButton({ action, showPassword, isPending }: EyeButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={action}
+      className="absolute top-1/2 right-[10px] -translate-y-1/2 bg-transparent border-none p-[5px] z-10 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50 group selection:bg-transparent"
+      aria-label={showPassword ? "Hide password" : "Show password"}
+      disabled={isPending}
+    >
+      <Image
+        src={
+          showPassword ? "/assets/eye-closed-icon.svg" : "/assets/eye-icon.svg"
+        }
+        width={20}
+        height={14}
+        alt={showPassword ? "Hidden" : "Visible"}
+        className="w-[20px] h-[14px] block opacity-80 group-hover:opacity-100 transition-opacity duration-150"
+      />
+    </button>
+  );
+}
+
+export function OTPFormSubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-[183px] h-[52px] bg-[#263775] text-white rounded-[56px] font-['Merriweather'] font-bold text-base flex items-center justify-center transition-opacity hover:opacity-90 disabled:opacity-50"
+    >
+      {pending ? "Verifying..." : "Verify OTP"}
+    </button>
+  );
+}
+
+export function OTPBackToLoginButton() {
+  const router = useRouter();
+
+  return (
+    <button
+      type="button"
+      onClick={() => router.push("/auth/login")}
+      className="font-['Merriweather'] font-bold text-[18px] text-black mt-[25px] hover:underline"
+    >
+      Back to Login
+    </button>
+  );
+}
+
+interface OTPResendButtonProps {
+  onResend: () => void;
+}
+
+export function OTPResendButton({ onResend }: OTPResendButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onResend}
+      className="w-[183px] h-[52px] bg-[#4285F4] text-[#E7E7E7] rounded-[56px] font-['Merriweather'] font-bold text-base flex items-center justify-center transition-opacity hover:opacity-90"
+    >
+      Resend OTP
     </button>
   );
 }
