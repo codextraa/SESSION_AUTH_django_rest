@@ -71,18 +71,25 @@ export interface PrevStateLoginForm {
   password: string;
 }
 
-// export type PrevStateLoginForm =
-//   | LoginInput
-//   | LoginSuccessState
-//   | ErrorResponse
-//   | undefined;
-// export interface reCaptchaTokenData {
-//   recaptcha_token: string | undefined;
-//   recaptcha_version: string | undefined;
-//   expected_action?: string | undefined;
-// } //not need anymore but keep for now
+export interface TwoFAErrorFields {
+  pre_auth_token?: string;
+  otp?: string;
+  general?: string;
+}
 
-// export type reCaptchaVerifyResponse = SuccessResponse | ErrorResponse;
+export interface PrevStateTwoFALoginForm {
+  success: string;
+  error: object;
+}
+
+export interface TwoFALoginInput {
+  pre_auth_token: string | unknown | undefined;
+  otp: string | unknown | undefined;
+}
+
+export type TwoFASessionAPIResponse = SessionResponseSuccess | ErrorResponse;
+
+export type LogoutAPIResponse = SuccessResponse | ErrorResponse;
 
 /* eslint-disable no-unused-vars */
 declare global {

@@ -91,7 +91,7 @@ class TwoFAViewTests(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("otp", response.data)
-        self.assertEqual(response.data["otp"][0], "OTP is invalid.")
+        self.assertEqual(response.data["otp"][0], "OTP is required.")
 
     # ==========================================
     # CSRFTOKEN FAILURE TEST
@@ -125,7 +125,7 @@ class TwoFAViewDBTests(APITestCase):
 
         self.cache_obj = {
             "user_id": self.user.id,
-            "otp": 123456,
+            "otp": "123456",
         }
 
         raw_pre_auth_token, error = encrypt_and_set_cache_data(
@@ -134,7 +134,7 @@ class TwoFAViewDBTests(APITestCase):
 
         self.valid_payload = {
             "pre_auth_token": raw_pre_auth_token,
-            "otp": 123456,
+            "otp": "123456",
         }
 
         csrf_url = reverse("csrf-token")
