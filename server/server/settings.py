@@ -194,6 +194,8 @@ FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# Redis
+
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
@@ -204,16 +206,21 @@ CACHES = {
     }
 }
 
-# Authentication backends
+# User Settings
+
+AUTH_USER_MODEL = "core_db.User"
+
+# Authentication backends (custom + social auths)
 # If one fails the next one runs, therefore don't use ModelBackend in case of CustomAuthBackend
 
 AUTHENTICATION_BACKENDS = (
     "social_core.backends.google.GoogleOAuth2",
+    # "social_core.backends.apple.AppleIdAuth",
+    "social_core.backends.microsoft.MicrosoftOAuth2",
     "social_core.backends.facebook.FacebookOAuth2",
-    # 'social_core.backends.instagram.InstagramOAuth2',
-    # 'social_core.backends.twitter.TwitterOAuth',
-    # 'social_core.backends.linkedin.LinkedinOAuth2',
+    "social_core.backends.amazon.AmazonOAuth2",
     "social_core.backends.github.GithubOAuth2",
+    "social_core.backends.linkedin.LinkedinOpenIdConnect",
     "server.backends.CustomAuthBackend",
     # "django.contrib.auth.backends.ModelBackend",
 )
@@ -225,20 +232,57 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_uid",
     "social_core.pipeline.social_auth.auth_allowed",
     "social_core.pipeline.social_auth.social_user",
-    "social_core.pipeline.user.get_username",
-    "auth_api.pipeline.user_creation",
+    # "auth_api.pipeline.login_or_signup",
+    # "auth_api.pipeline.create_custom_user",
     "social_core.pipeline.social_auth.associate_user",
     "social_core.pipeline.social_auth.load_extra_data",
-    "social_core.pipeline.user.user_details",
+    # "auth_api.pipeline.update_user_details",
 )
 
-# Social django settings
+SOCIAL_AUTH_DISCONNECT_PIPELINE = (
+    "social_core.pipeline.disconnect.allowed_to_disconnect",
+    "social_core.pipeline.disconnect.get_entries",
+    "social_core.pipeline.disconnect.revoke_tokens",
+    "social_core.pipeline.disconnect.disconnect",
+)
 
-SOCIAL_AUTH_JSONFIELD_ENABLED = True
+# Social django global settings
+
+HTTP_PROXY = os.getenv("SOCIAL_AUTH_HTTP_PROXY_IP")
+HTTPS_PROXY = os.getenv("SOCIAL_AUTH_HTTPS_PROXY_IP")
+
+SOCIAL_AUTH_USER_MODEL = "core_db.User"
+SOCIAL_AUTH_REQUESTS_TIMEOUT = 15
+SOCIAL_AUTH_IMMUTABLE_USER_FIELDS = ["email"]
+SOCIAL_AUTH_PROTECTED_USER_FIELDS = ["username", "phone_number"]
+SOCIAL_AUTH_FORCE_EMAIL_LOWERCASE = True
+SOCIAL_AUTH_REDIRECT_IS_HTTPS = True
+
+if DJANGO_ENV == "production" and HTTP_PROXY and HTTPS_PROXY:
+    SOCIAL_AUTH_PROXIES = {
+        "http": HTTP_PROXY,
+        "https": HTTPS_PROXY,
+    }
+else:
+    SOCIAL_AUTH_PROXIES = {}
+
+SOCIAL_AUTH_REVOKE_TOKENS_ON_DISCONNECT = True
+
+# Social auth settings per provider
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv("GOOGLE_CLIENT_ID")
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
 SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["email", "profile"]
+
+# SOCIAL_AUTH_APPLE_ID_CLIENT = os.getenv("APPLE_CLIENT_ID")
+# SOCIAL_AUTH_APPLE_ID_TEAM = os.getenv("APPLE_TEAM_ID")
+# SOCIAL_AUTH_APPLE_ID_KEY = os.getenv("APPLE_KEY_ID")
+# SOCIAL_AUTH_APPLE_ID_SECRET = os.getenv("APPLE_PRIVATE_KEY")
+# SOCIAL_AUTH_APPLE_ID_SCOPE = ["email", "name"]
+
+SOCIAL_AUTH_MICROSOFT_GRAPH_KEY = os.getenv("MICROSOFT_CLIENT_ID")
+SOCIAL_AUTH_MICROSOFT_GRAPH_SECRET = os.getenv("MICROSOFT_CLIENT_SECRET")
+SOCIAL_AUTH_MICROSOFT_GRAPH_SCOPE = ["User.Read", "email", "openid", "profile"]
 
 SOCIAL_AUTH_FACEBOOK_KEY = os.getenv("FACEBOOK_CLIENT_ID")
 SOCIAL_AUTH_FACEBOOK_SECRET = os.getenv("FACEBOOK_CLIENT_SECRET")
@@ -249,15 +293,15 @@ SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
 
 SOCIAL_AUTH_GITHUB_KEY = os.getenv("GITHUB_CLIENT_ID")
 SOCIAL_AUTH_GITHUB_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
+SOCIAL_AUTH_GITHUB_SCOPE = ["user:email", "read:user"]
 
-# SOCIAL_AUTH_INSTAGRAM_KEY = '<INSTAGRAM_CLIENT_ID>' # business app required
-# SOCIAL_AUTH_INSTAGRAM_SECRET = '<INSTAGRAM_CLIENT_SECRET>'
+SOCIAL_AUTH_AMAZON_KEY = os.getenv("AMAZON_CLIENT_ID")
+SOCIAL_AUTH_AMAZON_SECRET = os.getenv("AMAZON_CLIENT_SECRET")
+SOCIAL_AUTH_AMAZON_SCOPE = ["profile"]
 
-# SOCIAL_AUTH_TWITTER_KEY = '<TWITTER_API_KEY>' # privacy policy link required
-# SOCIAL_AUTH_TWITTER_SECRET = '<TWITTER_API_SECRET>'
-
-# SOCIAL_AUTH_LINKEDIN_KEY = '<LINKEDIN_CLIENT_ID>' # LinkedIn page required
-# SOCIAL_AUTH_LINKEDIN_SECRET = '<LINKEDIN_CLIENT_SECRET>'
+SOCIAL_AUTH_LINKEDIN_OPENIDCONNECT_KEY = os.getenv("LINKEDIN_CLIENT_ID")
+SOCIAL_AUTH_LINKEDIN_OPENIDCONNECT_SECRET = os.getenv("LINKEDIN_CLIENT_SECRET")
+SOCIAL_AUTH_LINKEDIN_OPENIDCONNECT_SCOPE = ["openid", "profile", "email"]
 
 # Twilio Settings
 
@@ -266,10 +310,10 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 # Recaptcha Settings
+
 RECAPTCHA_PROJECT_ID = os.getenv("GCP_PROJECT_ID", "xxxxx")
 RECAPTCHA_SITE_KEY_V2 = os.getenv("RECAPTCHA_SITE_KEY_V2")
 RECAPTCHA_SITE_KEY_V3 = os.getenv("RECAPTCHA_SITE_KEY_V3")
-
 
 # REST Framework Settings
 
@@ -374,10 +418,6 @@ CSRF_COOKIE_AGE = CSRF_TOKEN_TTL  # 1 day and 10 seconds
 # Session Settings
 
 SESSION_COOKIE_SECURE = True  # Secure session cookies
-
-# User Settings
-
-AUTH_USER_MODEL = "core_db.User"
 
 # Email Settings
 

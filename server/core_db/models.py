@@ -59,11 +59,12 @@ class User(AbstractBaseUser, PermissionsMixin):
     AUTH_PROVIDER = [
         ("email", "Email"),
         ("google", "Google"),
+        ("apple", "Apple"),
+        ("microsoft", "Microsoft"),
         ("facebook", "Facebook"),
-        ("instagram", "Instagram"),
-        ("twitter", "Twitter"),
-        ("linkedin", "LinkedIn"),
         ("github", "GitHub"),
+        ("amazon", "Amazon"),
+        ("linkedin", "LinkedIn"),
     ]
     email = models.EmailField(max_length=255, unique=True)
     username = models.CharField(
