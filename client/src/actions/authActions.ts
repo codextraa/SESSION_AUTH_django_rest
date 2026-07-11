@@ -165,7 +165,7 @@ export async function loginAction(
 
   try {
     const response = await login(credentials);
-    // const response = {"error": "reCAPTCHA validation failed"};
+    // const response = { "error": "reCAPTCHA validation failed" };
     if (response && "error" in response && response.error) {
       if (
         typeof response.error === "string" &&
@@ -347,7 +347,6 @@ export async function twoFALoginAction(
 }
 
 export async function logoutAction(): Promise<LogoutAPIResponse> {
-  // return await logout();
   try {
     const response = await logout();
     if (response && "error" in response && response.error) {
