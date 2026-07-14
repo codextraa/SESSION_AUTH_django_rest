@@ -232,11 +232,11 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.social_uid",
     "social_core.pipeline.social_auth.auth_allowed",
     "social_core.pipeline.social_auth.social_user",
-    # "auth_api.pipeline.login_or_signup",
-    # "auth_api.pipeline.create_custom_user",
+    "auth_api.pipelines.login_or_signup",
+    "auth_api.pipelines.create_custom_user",
+    "auth_api.pipelines.update_user_details",
     "social_core.pipeline.social_auth.associate_user",
     "social_core.pipeline.social_auth.load_extra_data",
-    # "auth_api.pipeline.update_user_details",
 )
 
 SOCIAL_AUTH_DISCONNECT_PIPELINE = (

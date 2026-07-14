@@ -23,6 +23,50 @@ def get_user_role(user):
     return user_role
 
 
+def set_first_and_last_name(details):
+    first_name = details.get("first_name", "").strip()
+    last_name = details.get("last_name", "").strip()
+
+    if not first_name:
+        fallback_name = details.get("fullname") or details.get("username") or "User"
+        name_parts = fallback_name.strip().split()
+        if len(name_parts) == 1:
+            first_name = name_parts[0]
+        elif len(name_parts) > 1:
+            first_name = name_parts[0]
+            last_name = " ".join(name_parts[1:])
+
+    return first_name, last_name
+
+
+def set_profile_image(backend_name, user, response):
+    """
+    Extracts and assigns the provider's profile image URL.
+    """
+    profile_img_str = str(user.profile_img) if user.profile_img else ""
+    profile_img_url = None
+
+    if backend_name == "google-oauth2":
+        google_profile_img = response.get("picture")
+        if google_profile_img:
+            profile_img_url = google_profile_img.replace("=s96-c", "=s720-c")
+    elif backend_name == "facebook":
+        facebook_profile_img = response.get("picture")
+        if isinstance(facebook_profile_img, dict) and "data" in facebook_profile_img:
+            profile_img_url = facebook_profile_img["data"]["url"]
+    elif backend_name == "github":
+        profile_img_url = response.get("avatar_url")
+    elif backend_name == "linkedin-openidconnect":
+        profile_img_url = response.get("picture")
+    elif backend_name in ["microsoft-graph", "amazon", "apple-id"]:
+        profile_img_url = "profile_images/default.png"
+
+    if profile_img_url and profile_img_url != profile_img_str:
+        user.profile_img = profile_img_url
+
+    return user
+
+
 def create_otp(user_id):
     """
     Generates an OTP and send it to the user's email.

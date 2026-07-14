@@ -23,11 +23,11 @@ from server.renderers import ViewRenderer
 from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
 from server.utils.recaptcha import verify_recaptcha_token
 from server.utils.encryption import generate_cache_key
-from server.utils.throttles import OTPCooldownThrottle, TwoFACooldownThrottle
 from server.schema_serializers import (
     SuccessResponseSerializer,
     ErrorResponseSerializer,
 )
+from .throttles import OTPCooldownThrottle, TwoFACooldownThrottle
 from .utils import get_user_role, create_otp, verify_otp
 from .validation_serializers import ValidUserSerializer
 from .request_serializers import (
