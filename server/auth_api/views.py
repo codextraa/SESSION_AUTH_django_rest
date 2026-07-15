@@ -1,5 +1,6 @@
 """Views for Auth API."""  # pylint: disable=C0302
 
+import logging
 from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.middleware.csrf import get_token
@@ -12,6 +13,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.exceptions import ValidationError, Throttled
+from social_core.exceptions import AuthException
+from social_django.utils import load_backend, load_strategy
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiResponse,
@@ -34,12 +37,15 @@ from .request_serializers import (
     RecaptchaRequestSerializer,
     LoginRequestSerializer,
     TwoFARequestSerializer,
+    SocialLoginRequestSerializer,
 )
 from .response_serializers import (
     CSRFTokenResponseSerializer,
     OTPResponseSerializer,
     SessionResponseSerializer,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class CSRFTokenView(APIView):
@@ -168,31 +174,31 @@ class RecaptchaValidationView(APIView):
                 name="Action Missing",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"expected_action": ["Action is required."]}},
+                value={"error": {"expected_action": ["Action is required."]}},
             ),
             OpenApiExample(
                 name="Missing reCAPTCHA Token",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"recaptcha_token": ["Missing reCAPTCHA token."]}},
+                value={"error": {"recaptcha_token": ["Missing reCAPTCHA token."]}},
             ),
             OpenApiExample(
                 name="Missing reCAPTCHA Version",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"recaptcha_version": ["Missing reCAPTCHA version."]}},
+                value={"error": {"recaptcha_version": ["Missing reCAPTCHA version."]}},
             ),
             OpenApiExample(
                 name="Missing User Agent",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"user_agent": ["Missing User Agent Header."]}},
+                value={"error": {"user_agent": ["Missing User Agent Header."]}},
             ),
             OpenApiExample(
                 name="Missing User IP Address",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"user_ip": ["Missing User IP Address."]}},
+                value={"error": {"user_ip": ["Missing User IP Address."]}},
             ),
             OpenApiExample(
                 name="Invalid reCAPTCHA Token",
@@ -379,38 +385,38 @@ class LoginView(APIView):
                 response_only=True,
                 status_codes=["400"],
                 value={
-                    "errors": {"email_or_username": ["Email or username is required."]}
+                    "error": {"email_or_username": ["Email or username is required."]}
                 },
             ),
             OpenApiExample(
                 name="Missing Password",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"password": ["Password is required."]}},
+                value={"error": {"password": ["Password is required."]}},
             ),
             OpenApiExample(
                 name="Missing reCAPTCHA Token",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"recaptcha_token": ["Missing reCAPTCHA token."]}},
+                value={"error": {"recaptcha_token": ["Missing reCAPTCHA token."]}},
             ),
             OpenApiExample(
                 name="Missing reCAPTCHA Version",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"recaptcha_version": ["Missing reCAPTCHA version."]}},
+                value={"error": {"recaptcha_version": ["Missing reCAPTCHA version."]}},
             ),
             OpenApiExample(
                 name="Missing User Agent",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"user_agent": ["Missing User Agent Header."]}},
+                value={"error": {"user_agent": ["Missing User Agent Header."]}},
             ),
             OpenApiExample(
                 name="Missing User IP Address",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"user_ip": ["Missing User IP Address."]}},
+                value={"error": {"user_ip": ["Missing User IP Address."]}},
             ),
             OpenApiExample(
                 name="Invalid Credentials",
@@ -477,7 +483,10 @@ class LoginView(APIView):
                 response_only=True,
                 status_codes=["403"],
                 value={
-                    "error": "This process cannot be used, as user is created using google"
+                    "error": (
+                        "This account uses social login. Please set a"
+                        "password first to log in with an email."
+                    )
                 },
             ),
             OpenApiExample(
@@ -677,19 +686,19 @@ class TwoFAView(APIView):
                 name="Missing Pre Auth Token",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"pre_auth_token": ["Token is required."]}},
+                value={"error": {"pre_auth_token": ["Token is required."]}},
             ),
             OpenApiExample(
                 name="Missing OTP",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"otp": ["OTP is required."]}},
+                value={"error": {"otp": ["OTP is required."]}},
             ),
             OpenApiExample(
                 name="Invalid OTP",
                 response_only=True,
                 status_codes=["400"],
-                value={"errors": {"otp": ["OTP is invalid."]}},
+                value={"error": {"otp": ["OTP is invalid."]}},
             ),
             OpenApiExample(
                 name="Invalid Pre Auth Token",
@@ -885,6 +894,85 @@ class RefreshSessionView(APIView):
             )
 
 
+class SocialLoginView(APIView):
+    """
+    Unified Social Login View. Validates token payload forwarded from Auth.js
+    and executes custom social auth pipelines.
+    """
+
+    permission_classes = [AllowAny]
+    renderer_classes = [ViewRenderer]
+
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):  # pylint: disable=R0914
+        try:
+            req_serializer = SocialLoginRequestSerializer(
+                data=request.data, context={"request": request}
+            )
+            req_serializer.is_valid(raise_exception=True)
+            validated_data = req_serializer.validated_data
+
+            provider_token = validated_data["social_auth_token"]
+            provider_name = validated_data["provider"]
+
+            strategy = load_strategy(request)
+            backend = load_backend(
+                strategy=strategy, name=provider_name, redirect_uri=None
+            )
+            user = backend.do_auth(provider_token)
+
+            if not user:
+                return Response(
+                    {"error": "Authentication error. User not found"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+
+            hashed_user_key = generate_cache_key(user.id)
+            cache.delete(f"login_failures:{hashed_user_key}")
+
+            login(request, user, backend=user.backend)
+            sessionid = request.session.session_key
+            session_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.SESSION_COOKIE_TTL)
+                - timedelta(seconds=10)
+            ).isoformat()
+
+            csrf_token = get_token(request)
+            csrf_token_expiry = (
+                datetime.now(timezone.utc)
+                + timedelta(seconds=settings.CSRF_TOKEN_TTL)
+                - timedelta(seconds=10)
+            )
+
+            raw_data = {
+                "sessionid": sessionid,
+                "session_expiry": session_expiry,
+                "user_id": user.id,
+                "user_role": get_user_role(user),
+                "csrf_token": csrf_token,
+                "csrf_token_expiry": csrf_token_expiry,
+            }
+
+            token_res_serializer = SessionResponseSerializer(data=raw_data)
+
+            token_res_serializer.is_valid(raise_exception=True)
+
+            return Response(token_res_serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:  # pylint: disable=W0718
+            if isinstance(e, (ValidationError, ForbiddenValidationError)):
+                raise e
+            if isinstance(e, AuthException):
+                logger.error("Social authentication failed: %s", str(e))
+                return Response(
+                    {"error": "Social authentication failed. Something went wrong."},
+                    status=status.HTTP_401_UNAUTHORIZED,
+                )
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 class LogoutView(APIView):
     """Logout View."""
 
@@ -925,7 +1013,7 @@ class LogoutView(APIView):
                 name="Unauthorized Example",
                 response_only=True,
                 status_codes=["401"],
-                value={"detail": "Authentication credentials were not provided."},
+                value={"error": "Authentication credentials were not provided."},
             ),
             OpenApiExample(
                 name="Internal Server Error",
