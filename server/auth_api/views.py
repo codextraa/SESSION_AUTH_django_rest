@@ -903,6 +903,108 @@ class SocialLoginView(APIView):
     permission_classes = [AllowAny]
     renderer_classes = [ViewRenderer]
 
+    @extend_schema(
+        summary="Social Authentication",
+        description=(
+            "Accepts a social auth provider token verified by Auth.js, executes the"
+            "social login or signup backend pipeline, and returns a Session ID."
+        ),
+        request=SocialLoginRequestSerializer,
+        tags=["Authentication"],
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                response=SessionResponseSerializer,
+                description="Success - Session ID returned",
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Bad Request - Invalid request parameters",
+            ),
+            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Unauthorized - Social authentication failed",
+            ),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Forbidden - Social authentication failed due to user",
+            ),
+            status.HTTP_404_NOT_FOUND: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Not Found - User not found in backend DB",
+            ),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Internal Server Error.",
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="Social Login Request Example",
+                request_only=True,
+                value={
+                    "provider": "google-oauth2",
+                    "social_auth_token": "ya29.a0AfH6SMC-EXAMPLE-TOKEN-FROM-AUTHJS",
+                },
+            ),
+            OpenApiExample(
+                name="Session ID Success Response",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "sessionid": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-SESSIONID",
+                    "session_expiry": "2026-06-17T12:34:56.789Z",
+                    "user_id": 42,
+                    "user_role": "Default",
+                    "csrf_token": "ABcDeFgHiJkLmNoPqRsTuVwXyZ123456-CSRFTOKEN",
+                    "csrf_token_expiry": "2026-06-18T12:34:56.789Z",
+                },
+            ),
+            OpenApiExample(
+                name="Missing Provider Name",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"provider": ["Provider is required."]}},
+            ),
+            OpenApiExample(
+                name="Missing Social Token",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"social_auth_token": ["Token is required."]}},
+            ),
+            OpenApiExample(
+                name="Social Provider Auth Failed",
+                response_only=True,
+                status_codes=["401"],
+                value={"error": "Social authentication failed. Something went wrong."},
+            ),
+            OpenApiExample(
+                name="Deactivated Account Check",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Account has been deactivated. Contact your admin"},
+            ),
+            OpenApiExample(
+                name="Unverified Email Check",
+                response_only=True,
+                status_codes=["403"],
+                value={
+                    "error": "Email is not verified. You must verify your email first"
+                },
+            ),
+            OpenApiExample(
+                name="Resolved User Not Found",
+                response_only=True,
+                status_codes=["404"],
+                value={"error": "Authentication error. User not found"},
+            ),
+            OpenApiExample(
+                name="Internal Server Error",
+                response_only=True,
+                status_codes=["500"],
+                value={"error": "Internal Server Error"},
+            ),
+        ],
+    )
     @method_decorator(csrf_protect)
     def post(self, request, *args, **kwargs):  # pylint: disable=R0914
         try:
