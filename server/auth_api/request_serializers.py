@@ -80,3 +80,33 @@ class TwoFARequestSerializer(serializers.Serializer):  # pylint: disable=W0223
             "null": "OTP is required.",
         },
     )
+
+
+class SocialLoginRequestSerializer(serializers.Serializer):  # pylint: disable=W0223
+    """
+    Handles Social Login credentials.
+    """
+
+    provider = serializers.CharField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        help_text="The social provider name",
+        error_messages={
+            "required": "Provider is required.",
+            "blank": "Provider is required.",
+            "null": "Provider is required.",
+        },
+    )
+
+    social_auth_token = serializers.CharField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        help_text="The access token or ID token received from Auth.js",
+        error_messages={
+            "required": "Token is required.",
+            "blank": "Token is required.",
+            "null": "Token is required.",
+        },
+    )

@@ -14,7 +14,7 @@ def login_or_signup(backend, details, *args, user=None, **kwargs):
     and determines whether profile updating should be permitted.
     """
     if user:  # if user already authenticated
-        error_msg = validate_user_attributes(user, endpoint="social_login")
+        error_msg = validate_user_attributes(user)
         if error_msg:
             raise ForbiddenValidationError({"error": error_msg})
         return {"user": user, "is_new": False, "is_update": False}
@@ -30,7 +30,7 @@ def login_or_signup(backend, details, *args, user=None, **kwargs):
     try:
         existing_user = User.objects.get(email=email)
 
-        error_msg = validate_user_attributes(existing_user, endpoint="social_login")
+        error_msg = validate_user_attributes(existing_user)
         if error_msg:
             raise ForbiddenValidationError({"error": error_msg})
 
@@ -59,7 +59,7 @@ def create_custom_user(
     """
     Handles user instance initialization for new user
     """
-    if not user or not is_new:
+    if not is_new:
         return {"user": user, "is_new": is_new, "is_update": is_update}
 
     email = details.get("email", "").lower()

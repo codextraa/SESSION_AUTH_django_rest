@@ -5,10 +5,7 @@ from server.utils.exception import BadRequestValidationError, ForbiddenValidatio
 from server.utils.encryption import generate_cache_key
 
 
-def validate_user_attributes(user, endpoint):
-    if user.auth_provider != "email" and endpoint == "login":
-        return f"This process cannot be used, as user is created using {user.auth_provider}"
-
+def validate_user_attributes(user):
     if not user.is_active:
         return "Account has been deactivated. Contact your admin"
 
@@ -37,6 +34,16 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
                 if not user_obj.is_active:
                     raise ForbiddenValidationError(
                         {"error": "Account has been deactivated. Contact your admin"}
+                    )
+
+                if user_obj.auth_provider != "email":
+                    raise ForbiddenValidationError(
+                        {
+                            "error": (
+                                "This account uses social login. Please set a "
+                                "password first to log in with an email."
+                            )
+                        }
                     )
 
                 hashed_user_key = generate_cache_key(user_obj.id)
@@ -100,7 +107,7 @@ class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223
 
             raise BadRequestValidationError({"error": "Invalid credentials"})
 
-        error = validate_user_attributes(user, "login")
+        error = validate_user_attributes(user)
 
         if error:
             raise ForbiddenValidationError({"error": error})
