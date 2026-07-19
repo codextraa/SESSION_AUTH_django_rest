@@ -1,4 +1,5 @@
 from unittest.mock import patch, MagicMock
+from django.test import override_settings
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from django.core.cache import cache
@@ -221,6 +222,10 @@ class SocialLoginViewDBTests(APITestCase):
         new_user = User.objects.get(email="googleuser2@example.com")
         self.assertEqual(new_user.first_name, "John")
         self.assertEqual(new_user.last_name, "Kane William")
+        self.assertEqual(
+            new_user.profile_img,
+            "profile_images/default_profile.jpg",
+        )
         self.assertEqual(new_user.auth_provider, "google")
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
@@ -243,6 +248,37 @@ class SocialLoginViewDBTests(APITestCase):
         new_user = User.objects.get(email="googleuser3@example.com")
         self.assertEqual(new_user.first_name, "John")
         self.assertEqual(new_user.last_name, "")
+        self.assertEqual(
+            new_user.profile_img,
+            "profile_images/default_profile.jpg",
+        )
+        self.assertEqual(new_user.auth_provider, "google")
+
+    @patch("social_core.backends.google.GoogleOAuth2.user_data")
+    def test_google_user_creation_without_picture(self, mock_user_data):
+        """Runs real pipeline. Creates new user and profile."""
+        mock_user_data.return_value = {
+            "email": "googleuser4@example.com",
+            "name": "John",
+            "picture": "",
+        }
+
+        self.assertFalse(User.objects.filter(email="googleuser4@example.com").exists())
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(User.objects.filter(email="googleuser4@example.com").exists())
+
+        new_user = User.objects.get(email="googleuser4@example.com")
+        self.assertEqual(new_user.first_name, "John")
+        self.assertEqual(new_user.last_name, "")
+        self.assertEqual(
+            new_user.profile_img,
+            "profile_images/default_profile.jpg",
+        )
         self.assertEqual(new_user.auth_provider, "google")
 
     @patch("social_core.backends.amazon.AmazonOAuth2.user_data")
@@ -420,7 +456,7 @@ class SocialLoginViewDBTests(APITestCase):
     # ------- Update -------
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_update_with_first_and_last_name_picture(self, mock_user_data):
+    def test_google_user_update(self, mock_user_data):
         """Runs real pipeline. Authenticates existing active social user successfully."""
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
@@ -429,6 +465,9 @@ class SocialLoginViewDBTests(APITestCase):
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
         }
 
+        self.existing_user.profile_img = (
+            "https://lh3.googleusercontent.com/a/old-mock-profile-image.jpg=s720-c"
+        )
         self.existing_user.auth_provider = "google"
         self.existing_user.save()
 
@@ -461,8 +500,8 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertIsNone(cache.get(cache_key))
 
         self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "Jane")
-        self.assertEqual(self.existing_user.last_name, "Doe")
+        self.assertEqual(self.existing_user.first_name, "first")
+        self.assertEqual(self.existing_user.last_name, "last")
         self.assertEqual(
             self.existing_user.profile_img,
             "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s720-c",
@@ -470,68 +509,19 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(self.existing_user.auth_provider, "google")
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_update_with_only_fullname(self, mock_user_data):
-        """Runs real pipeline. Creates new user and profile."""
+    @override_settings(
+        AWS_STORAGE_BUCKET_NAME="my-mock-bucket",
+        ALLOWED_HOSTS=["myapp.com", "localhost", "testserver"],
+    )
+    def test_google_user_update_skipped(self, mock_user_data):
+        """Runs real pipeline. Authenticates existing active social user successfully."""
+
+        # * First case where the image is local
+
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
-            "name": "John Kane William",
-        }
-
-        self.existing_user.auth_provider = "google"
-        self.existing_user.save()
-
-        self.assertTrue(User.objects.filter(email="defaultuser@example.com").exists())
-
-        response = self.client.post(
-            self.url, self.valid_payload, format="json", **self.headers
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "John")
-        self.assertEqual(self.existing_user.last_name, "Kane William")
-        self.assertEqual(
-            self.existing_user.profile_img,
-            "profile_images/default_profile.jpg",
-        )
-        self.assertEqual(self.existing_user.auth_provider, "google")
-
-    @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_update_with_only_half_fullname(self, mock_user_data):
-        """Runs real pipeline. Creates new user and profile."""
-        mock_user_data.return_value = {
-            "email": "defaultuser@example.com",
-            "name": "John",
-        }
-
-        self.existing_user.auth_provider = "google"
-        self.existing_user.save()
-
-        self.assertTrue(User.objects.filter(email="defaultuser@example.com").exists())
-
-        response = self.client.post(
-            self.url, self.valid_payload, format="json", **self.headers
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-
-        self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "John")
-        self.assertEqual(self.existing_user.last_name, "last")
-        self.assertEqual(
-            self.existing_user.profile_img,
-            "profile_images/default_profile.jpg",
-        )
-        self.assertEqual(self.existing_user.auth_provider, "google")
-
-    @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_update_with_only_picture(self, mock_user_data):
-        """Runs real pipeline. Creates new user and profile."""
-        mock_user_data.return_value = {
-            "email": "defaultuser@example.com",
-            "given_name": "first",
-            "family_name": "last",
+            "given_name": "Jane",
+            "family_name": "Doe",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
         }
 
@@ -540,20 +530,62 @@ class SocialLoginViewDBTests(APITestCase):
 
         self.assertTrue(User.objects.filter(email="defaultuser@example.com").exists())
 
-        response = self.client.post(
+        response1 = self.client.post(
             self.url, self.valid_payload, format="json", **self.headers
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response1.status_code, status.HTTP_200_OK)
 
         self.existing_user.refresh_from_db()
         self.assertEqual(self.existing_user.first_name, "first")
         self.assertEqual(self.existing_user.last_name, "last")
         self.assertEqual(
             self.existing_user.profile_img,
-            "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s720-c",
+            "profile_images/default_profile.jpg",
         )
         self.assertEqual(self.existing_user.auth_provider, "google")
+
+        # * Second case where the image is from s3
+
+        self.headers["HTTP_X_CSRFTOKEN"] = response1.data["csrf_token"]
+
+        s3_image_url = "https://my-mock-bucket.s3.amazonaws.com/real-estate/profile_images/avatar.jpg"
+        self.existing_user.profile_img = s3_image_url
+        self.existing_user.save()
+
+        response2 = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+
+        self.assertEqual(response2.status_code, status.HTTP_200_OK)
+
+        self.existing_user.refresh_from_db()
+        self.assertEqual(
+            self.existing_user.profile_img,
+            s3_image_url,
+        )
+
+        # * Third case where the image is from s3
+
+        self.headers["HTTP_X_CSRFTOKEN"] = response2.data["csrf_token"]
+
+        allowed_host_image_url = (
+            "https://myapp.com/media/profile_images/custom_avatar.jpg"
+        )
+        self.existing_user.profile_img = allowed_host_image_url
+        self.existing_user.save()
+
+        response3 = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+
+        self.assertEqual(response3.status_code, status.HTTP_200_OK)
+
+        self.existing_user.refresh_from_db()
+        self.assertEqual(
+            self.existing_user.profile_img.name,
+            allowed_host_image_url,
+        )
 
     @patch("social_core.backends.amazon.AmazonOAuth2.user_data")
     def test_amazon_user_update(self, mock_user_data):
@@ -577,8 +609,8 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "Jane")
-        self.assertEqual(self.existing_user.last_name, "Doe")
+        self.assertEqual(self.existing_user.first_name, "first")
+        self.assertEqual(self.existing_user.last_name, "last")
         self.assertEqual(
             self.existing_user.profile_img,
             "profile_images/default_profile.jpg",
@@ -604,6 +636,7 @@ class SocialLoginViewDBTests(APITestCase):
 
         self.valid_payload["provider"] = "facebook"
 
+        self.existing_user.profile_img = "https://platform-lookaside.fbsbx.com/platform/profilepic/?psid=old-mock-image.jpg"
         self.existing_user.auth_provider = "facebook"
         self.existing_user.save()
 
@@ -616,8 +649,8 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "Jane")
-        self.assertEqual(self.existing_user.last_name, "Doe")
+        self.assertEqual(self.existing_user.first_name, "first")
+        self.assertEqual(self.existing_user.last_name, "last")
         self.assertEqual(
             self.existing_user.profile_img,
             "https://platform-lookaside.fbsbx.com/platform/profilepic/?psid=mock-image.jpg",
@@ -625,16 +658,17 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(self.existing_user.auth_provider, "facebook")
 
     @patch("social_core.backends.github.GithubOAuth2.user_data")
-    def test_github_user_creation(self, mock_user_data):
+    def test_github_user_update(self, mock_user_data):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
             "name": "Jane Doe",
-            "avatar_url": "https://avatars.githubusercontent.com/u/87654321?v=4",
+            "avatar_url": "https://avatars.githubusercontent.com/u/87654321?v=4/mock-profile-image.jpg",
         }
 
         self.valid_payload["provider"] = "github"
 
+        self.existing_user.profile_img = "https://avatars.githubusercontent.com/u/87654321?v=4/old-mock-profile-image.jpg"
         self.existing_user.auth_provider = "github"
         self.existing_user.save()
 
@@ -647,11 +681,11 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "Jane")
-        self.assertEqual(self.existing_user.last_name, "Doe")
+        self.assertEqual(self.existing_user.first_name, "first")
+        self.assertEqual(self.existing_user.last_name, "last")
         self.assertEqual(
             self.existing_user.profile_img,
-            "https://avatars.githubusercontent.com/u/87654321?v=4",
+            "https://avatars.githubusercontent.com/u/87654321?v=4/mock-profile-image.jpg",
         )
         self.assertEqual(self.existing_user.auth_provider, "github")
 
@@ -659,7 +693,7 @@ class SocialLoginViewDBTests(APITestCase):
         "social_core.backends.linkedin.LinkedinOpenIdConnect.validate_and_return_id_token"
     )
     @patch("social_core.backends.linkedin.LinkedinOpenIdConnect.user_data")
-    def test_linkedin_user_creation(self, mock_user_data, mock_validate_token):
+    def test_linkedin_user_update(self, mock_user_data, mock_validate_token):
         """Runs real pipeline. Creates new user and profile."""
         LINKEDIN_JWT_CLAIMS = {
             "sub": "auth_li_998877",
@@ -683,6 +717,9 @@ class SocialLoginViewDBTests(APITestCase):
 
         self.valid_payload["provider"] = "linkedin-openidconnect"
 
+        self.existing_user.profile_img = (
+            "https://media.licdn.com/dms/image/v2/old-mock-profile.jpg"
+        )
         self.existing_user.auth_provider = "linkedin"
         self.existing_user.save()
 
@@ -695,8 +732,8 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "Jane")
-        self.assertEqual(self.existing_user.last_name, "Doe")
+        self.assertEqual(self.existing_user.first_name, "first")
+        self.assertEqual(self.existing_user.last_name, "last")
         self.assertEqual(
             self.existing_user.profile_img,
             "https://media.licdn.com/dms/image/v2/mock-profile.jpg",
@@ -704,7 +741,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(self.existing_user.auth_provider, "linkedin")
 
     @patch("social_core.backends.microsoft.MicrosoftOAuth2.user_data")
-    def test_microsoft_user_creation(self, mock_user_data):
+    def test_microsoft_user_update(self, mock_user_data):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "userPrincipalName": "defaultuser@example.com",
@@ -727,15 +764,15 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
 
         self.existing_user.refresh_from_db()
-        self.assertEqual(self.existing_user.first_name, "Jane")
-        self.assertEqual(self.existing_user.last_name, "Doe")
+        self.assertEqual(self.existing_user.first_name, "first")
+        self.assertEqual(self.existing_user.last_name, "last")
         self.assertEqual(
             self.existing_user.profile_img,
             "profile_images/default_profile.jpg",
         )
         self.assertEqual(self.existing_user.auth_provider, "microsoft")
 
-    # ------- Scenarios -------
+    # # ------- Scenarios -------
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
     def test_login_existing_email_user_without_update_success(self, mock_user_data):
@@ -868,8 +905,8 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response2.status_code, status.HTTP_200_OK)
 
         new_user.refresh_from_db()
-        self.assertEqual(new_user.first_name, "John")
-        self.assertEqual(new_user.last_name, "Kane William")
+        self.assertEqual(new_user.first_name, "Jane")
+        self.assertEqual(new_user.last_name, "Doe")
         self.assertEqual(
             new_user.profile_img,
             "https://lh3.googleusercontent.com/a/mock-profile-image2.jpg=s720-c",
