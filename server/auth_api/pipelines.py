@@ -2,7 +2,7 @@ from django.contrib.auth import get_user_model
 from social_core.exceptions import AuthException
 from server.utils.exception import ForbiddenValidationError
 from core_db.utils import generate_random_username, generate_random_password
-from .utils import validate_user_attributes, set_profile_image, set_first_and_last_name
+from .utils import validate_user_attributes, set_profile_image
 
 User = get_user_model()
 
@@ -66,7 +66,17 @@ def create_custom_user(
             backend, "Email identifier missing from the provider response."
         )
 
-    first_name, last_name = set_first_and_last_name(details)
+    first_name = details.get("first_name", "").strip()
+    last_name = details.get("last_name", "").strip()
+
+    if not first_name:
+        fallback_name = details.get("fullname")
+        name_parts = fallback_name.strip().split()
+        if len(name_parts) == 1:
+            first_name = name_parts[0]
+        elif len(name_parts) > 1:
+            first_name = name_parts[0]
+            last_name = " ".join(name_parts[1:])
 
     provider_tag = backend.name.split("-")[0]
 
@@ -112,7 +122,7 @@ def update_user_details(
     is_new=False,
     is_update=False,
     **kwargs,
-):  # pylint: disable=R0913, R0917
+):  # pylint: disable=R0913, R0917, W0613
     """
     Handles mutable profile attribute synchronization exclusively
     for native social return.
@@ -121,16 +131,6 @@ def update_user_details(
         return {"user": user, "is_new": is_new, "is_update": is_update}
 
     has_changed = False
-
-    new_first_name, new_last_name = set_first_and_last_name(details)
-
-    if new_first_name and user.first_name != new_first_name:
-        user.first_name = new_first_name
-        has_changed = True
-
-    if new_last_name and user.last_name != new_last_name:
-        user.last_name = new_last_name
-        has_changed = True
 
     new_profile_image = set_profile_image(backend.name, user, response)
 

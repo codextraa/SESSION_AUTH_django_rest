@@ -45,22 +45,6 @@ def validate_user_attributes(user, endpoint):
     return None
 
 
-def set_first_and_last_name(details):
-    first_name = details.get("first_name", "").strip()
-    last_name = details.get("last_name", "").strip()
-
-    if not first_name:
-        fallback_name = details.get("fullname")
-        name_parts = fallback_name.strip().split()
-        if len(name_parts) == 1:
-            first_name = name_parts[0]
-        elif len(name_parts) > 1:
-            first_name = name_parts[0]
-            last_name = " ".join(name_parts[1:])
-
-    return first_name, last_name
-
-
 def set_profile_image(backend_name, user, response):
     """
     Extracts and assigns the provider's profile image URL.
@@ -68,22 +52,36 @@ def set_profile_image(backend_name, user, response):
     profile_img_str = str(user.profile_img) if user.profile_img else ""
     profile_img_url = ""
 
+    if profile_img_str:
+        is_local_path = not profile_img_str.startswith(("http://", "https://"))
+
+        bucket_name = getattr(settings, "AWS_STORAGE_BUCKET_NAME", None)
+        is_s3_bucket = bucket_name and (bucket_name in profile_img_str)
+
+        allowed_hosts = getattr(settings, "ALLOWED_HOSTS", [])
+        is_allowed_host = any(
+            host.strip() in profile_img_str for host in allowed_hosts if host.strip()
+        )
+
+        if is_local_path or is_s3_bucket or is_allowed_host:
+            return None
+
     if backend_name == "google-oauth2":
-        google_profile_img = response.get("picture")
+        google_profile_img = response.get("picture", "")
         if google_profile_img:
             profile_img_url = google_profile_img.replace("=s96-c", "=s720-c")
     elif backend_name == "facebook":
-        facebook_profile_img = response.get("picture")
+        facebook_profile_img = response.get("picture", "")
         if isinstance(facebook_profile_img, dict) and "data" in facebook_profile_img:
             profile_img_url = facebook_profile_img["data"]["url"]
     elif backend_name == "github":
-        profile_img_url = response.get("avatar_url")
+        profile_img_url = response.get("avatar_url", "")
     elif backend_name == "linkedin-openidconnect":
-        profile_img_url = response.get("picture")
+        profile_img_url = response.get("picture", "")
     elif backend_name in ["microsoft-graph", "amazon", "apple-id"]:
         profile_img_url = ""
 
-    if not profile_img_url and not profile_img_str:
+    if not profile_img_url:
         return "profile_images/default_profile.jpg"
 
     if profile_img_url and profile_img_url != profile_img_str:
