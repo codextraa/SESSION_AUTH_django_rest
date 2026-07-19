@@ -978,6 +978,17 @@ class SocialLoginView(APIView):
                 value={"error": "Social authentication failed. Something went wrong."},
             ),
             OpenApiExample(
+                name="Staff Account Check",
+                response_only=True,
+                status_codes=["403"],
+                value={
+                    "error": (
+                        "Authentication failed. Please verify your credentials "
+                        "or try a different login method."
+                    )
+                },
+            ),
+            OpenApiExample(
                 name="Deactivated Account Check",
                 response_only=True,
                 status_codes=["403"],

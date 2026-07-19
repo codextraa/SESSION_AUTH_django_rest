@@ -3,22 +3,7 @@ from django.conf import settings
 from django.core.cache import cache
 from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
 from server.utils.encryption import generate_cache_key
-
-
-def validate_user_attributes(user, endpoint):
-    if user.auth_provider != "email" and endpoint == "login":
-        return (
-            f"This account uses social login. Please set a "
-            "password first to log in with an email."
-        )
-
-    if not user.is_active:
-        return "Account has been deactivated. Contact your admin"
-
-    if not user.is_email_verified:
-        return "Email is not verified. You must verify your email first"
-
-    return None
+from .utils import validate_user_attributes
 
 
 class ValidUserSerializer(serializers.Serializer):  # pylint: disable=W0223

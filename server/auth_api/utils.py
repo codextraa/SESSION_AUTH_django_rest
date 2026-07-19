@@ -23,12 +23,34 @@ def get_user_role(user):
     return user_role
 
 
+def validate_user_attributes(user, endpoint):
+    if user.auth_provider != "email" and endpoint == "login":
+        return (
+            "This account uses social login. Please set a "
+            "password first to log in with an email."
+        )
+
+    if user.is_staff and endpoint == "social_login":
+        return (
+            "Authentication failed. Please verify your credentials "
+            "or try a different login method."
+        )
+
+    if not user.is_active:
+        return "Account has been deactivated. Contact your admin"
+
+    if not user.is_email_verified:
+        return "Email is not verified. You must verify your email first"
+
+    return None
+
+
 def set_first_and_last_name(details):
     first_name = details.get("first_name", "").strip()
     last_name = details.get("last_name", "").strip()
 
     if not first_name:
-        fallback_name = details.get("fullname") or details.get("username") or "User"
+        fallback_name = details.get("fullname")
         name_parts = fallback_name.strip().split()
         if len(name_parts) == 1:
             first_name = name_parts[0]
@@ -44,7 +66,7 @@ def set_profile_image(backend_name, user, response):
     Extracts and assigns the provider's profile image URL.
     """
     profile_img_str = str(user.profile_img) if user.profile_img else ""
-    profile_img_url = None
+    profile_img_url = ""
 
     if backend_name == "google-oauth2":
         google_profile_img = response.get("picture")
@@ -59,12 +81,15 @@ def set_profile_image(backend_name, user, response):
     elif backend_name == "linkedin-openidconnect":
         profile_img_url = response.get("picture")
     elif backend_name in ["microsoft-graph", "amazon", "apple-id"]:
-        profile_img_url = "profile_images/default.png"
+        profile_img_url = ""
+
+    if not profile_img_url and not profile_img_str:
+        return "profile_images/default_profile.jpg"
 
     if profile_img_url and profile_img_url != profile_img_str:
-        user.profile_img = profile_img_url
+        return profile_img_url
 
-    return user
+    return None
 
 
 def create_otp(user_id):
