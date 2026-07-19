@@ -2,48 +2,46 @@ from django.contrib.auth import get_user_model
 from social_core.exceptions import AuthException
 from server.utils.exception import ForbiddenValidationError
 from core_db.utils import generate_random_username, generate_random_password
-from .validation_serializers import validate_user_attributes
-from .utils import set_profile_image, set_first_and_last_name
+from .utils import validate_user_attributes, set_profile_image, set_first_and_last_name
 
 User = get_user_model()
 
 
 def login_or_signup(backend, details, *args, user=None, **kwargs):
     """
-    Evaluates the user state, executes strict custom validations before authentication,
+    Evaluates the user state via Social UID or email verification,
+    executes strict custom validations before authentication,
     and determines whether profile updating should be permitted.
     """
-    if user:  # if user already authenticated
-        error_msg = validate_user_attributes(user, "social_login")
-        if error_msg:
-            raise ForbiddenValidationError({"error": error_msg})
-        return {"user": user, "is_new": False, "is_update": False}
+    if user:  # if social provider already used before
+        existing_user = user
+    else:  # if social provider used first time
+        email = details.get("email")
 
-    email = details.get("email")
-    if not email:
-        raise AuthException(
-            backend, "An email address is required from the authentication provider."
-        )
+        if not email:
+            raise AuthException(
+                backend,
+                "An email address is required from the authentication provider.",
+            )
 
-    email = email.lower()
+        email = email.lower()
 
-    try:
-        existing_user = User.objects.get(email=email)
+        try:
+            existing_user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return {"user": None, "is_new": True, "is_update": False}
 
-        error_msg = validate_user_attributes(existing_user, "social_login")
-        if error_msg:
-            raise ForbiddenValidationError({"error": error_msg})
+    error_msg = validate_user_attributes(existing_user, "social_login")
+    if error_msg:
+        raise ForbiddenValidationError({"error": error_msg})
 
-        is_matching_provider = existing_user.auth_provider in backend.name
+    is_matching_provider = existing_user.auth_provider in backend.name
 
-        return {
-            "user": existing_user,
-            "is_new": False,
-            "is_update": is_matching_provider,
-        }
-
-    except User.DoesNotExist:
-        return {"user": None, "is_new": True, "is_update": False}
+    return {
+        "user": existing_user,
+        "is_new": False,
+        "is_update": is_matching_provider,
+    }
 
 
 def create_custom_user(
@@ -55,7 +53,7 @@ def create_custom_user(
     is_new=False,
     is_update=False,
     **kwargs,
-):  # pylint: disable=R0913, R0917
+):  # pylint: disable=R0913, R0914, R0917
     """
     Handles user instance initialization for new user
     """
@@ -91,7 +89,10 @@ def create_custom_user(
 
     new_user.set_password(random_pass)
 
-    new_user = set_profile_image(backend.name, new_user, response)
+    new_profile_image = set_profile_image(backend.name, new_user, response)
+
+    if new_profile_image:
+        new_user.profile_img = new_profile_image
 
     new_user.save()
 
@@ -131,12 +132,10 @@ def update_user_details(
         user.last_name = new_last_name
         has_changed = True
 
-    old_img_str = str(user.profile_img) if user.profile_img else ""
+    new_profile_image = set_profile_image(backend.name, user, response)
 
-    user = set_profile_image(backend.name, user, response)
-
-    new_img_str = str(user.profile_img) if user.profile_img else ""
-    if old_img_str != new_img_str:
+    if new_profile_image:
+        user.profile_img = new_profile_image
         has_changed = True
 
     if has_changed:
