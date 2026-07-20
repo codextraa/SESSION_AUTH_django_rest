@@ -453,7 +453,7 @@ class LoginViewDBTests(APITestCase):
         error_msg = str(response.data["error"])
         self.assertEqual(
             error_msg,
-            "This process cannot be used, as user is created using google",
+            "This account uses social login. Please set a password first to log in with an email.",
         )
 
     @patch(
