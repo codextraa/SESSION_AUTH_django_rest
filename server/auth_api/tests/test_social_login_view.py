@@ -164,10 +164,12 @@ class SocialLoginViewDBTests(APITestCase):
     ):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "googleuser1@example.com",
             "given_name": "Jane",
             "family_name": "Doe",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
+            "email_verified": True,
         }
 
         self.assertFalse(User.objects.filter(email="googleuser1@example.com").exists())
@@ -206,8 +208,10 @@ class SocialLoginViewDBTests(APITestCase):
     def test_google_user_creation_with_fullname(self, mock_user_data):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "googleuser2@example.com",
             "name": "John Kane William",
+            "email_verified": True,
         }
 
         self.assertFalse(User.objects.filter(email="googleuser2@example.com").exists())
@@ -232,8 +236,10 @@ class SocialLoginViewDBTests(APITestCase):
     def test_google_user_creation_with_half_fullname(self, mock_user_data):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "googleuser3@example.com",
             "name": "John",
+            "email_verified": True,
         }
 
         self.assertFalse(User.objects.filter(email="googleuser3@example.com").exists())
@@ -258,9 +264,11 @@ class SocialLoginViewDBTests(APITestCase):
     def test_google_user_creation_without_picture(self, mock_user_data):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "googleuser4@example.com",
             "name": "John",
             "picture": "",
+            "email_verified": True,
         }
 
         self.assertFalse(User.objects.filter(email="googleuser4@example.com").exists())
@@ -353,6 +361,20 @@ class SocialLoginViewDBTests(APITestCase):
             "email": "githubuser@example.com",
             "name": "Jane Doe",
             "avatar_url": "https://avatars.githubusercontent.com/u/87654321?v=4",
+            "emails": [
+                {
+                    "email": "githubuser@example.com",
+                    "primary": "True",
+                    "verified": "true",
+                    "visibility": "public",
+                },
+                {
+                    "email": "secondary@github.com",
+                    "primary": False,
+                    "verified": True,
+                    "visibility": None,
+                },
+            ],
         }
 
         self.valid_payload["provider"] = "github"
@@ -399,6 +421,7 @@ class SocialLoginViewDBTests(APITestCase):
             "family_name": "Doe",
             "email": "linkedinuser@example.com",
             "picture": "https://media.licdn.com/dms/image/v2/mock-profile.jpg",
+            "email_verified": True,
         }
 
         self.valid_payload["provider"] = "linkedin-openidconnect"
@@ -429,6 +452,7 @@ class SocialLoginViewDBTests(APITestCase):
             "email": "microsoftuser@example.com",
             "givenName": "Jane",
             "surname": "Doe",
+            "xms_edov": True,
         }
 
         self.valid_payload["provider"] = "microsoft-graph"
@@ -459,10 +483,12 @@ class SocialLoginViewDBTests(APITestCase):
     def test_google_user_update(self, mock_user_data):
         """Runs real pipeline. Authenticates existing active social user successfully."""
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "defaultuser@example.com",
             "given_name": "Jane",
             "family_name": "Doe",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
+            "email_verified": True,
         }
 
         self.existing_user.profile_img = (
@@ -519,10 +545,12 @@ class SocialLoginViewDBTests(APITestCase):
         # * First case where the image is local
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "defaultuser@example.com",
             "given_name": "Jane",
             "family_name": "Doe",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
+            "email_verified": True,
         }
 
         self.existing_user.auth_provider = "google"
@@ -664,6 +692,20 @@ class SocialLoginViewDBTests(APITestCase):
             "email": "defaultuser@example.com",
             "name": "Jane Doe",
             "avatar_url": "https://avatars.githubusercontent.com/u/87654321?v=4/mock-profile-image.jpg",
+            "emails": [
+                {
+                    "email": "defaultuser@example.com",
+                    "primary": "True",
+                    "verified": "true",
+                    "visibility": "public",
+                },
+                {
+                    "email": "secondary@github.com",
+                    "primary": False,
+                    "verified": True,
+                    "visibility": None,
+                },
+            ],
         }
 
         self.valid_payload["provider"] = "github"
@@ -713,6 +755,7 @@ class SocialLoginViewDBTests(APITestCase):
             "family_name": "Doe",
             "email": "defaultuser@example.com",
             "picture": "https://media.licdn.com/dms/image/v2/mock-profile.jpg",
+            "email_verified": True,
         }
 
         self.valid_payload["provider"] = "linkedin-openidconnect"
@@ -748,6 +791,7 @@ class SocialLoginViewDBTests(APITestCase):
             "email": "defaultuser@example.com",
             "givenName": "Jane",
             "surname": "Doe",
+            "xms_edov": True,
         }
 
         self.valid_payload["provider"] = "microsoft-graph"
@@ -772,7 +816,7 @@ class SocialLoginViewDBTests(APITestCase):
         )
         self.assertEqual(self.existing_user.auth_provider, "microsoft")
 
-    # # ------- Scenarios -------
+    # ------- Scenerios -------
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
     def test_login_existing_email_user_without_update_success(self, mock_user_data):
@@ -781,10 +825,12 @@ class SocialLoginViewDBTests(APITestCase):
         # * First case where google social user doesn't exist (grabs the user)
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "defaultuser@example.com",
             "given_name": "Jane",
             "family_name": "Doe",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
+            "email_verified": True,
         }
 
         self.assertTrue(User.objects.filter(email="defaultuser@example.com").exists())
@@ -827,16 +873,19 @@ class SocialLoginViewDBTests(APITestCase):
 
         link = UserSocialAuth.objects.get(user=self.existing_user)
         self.assertEqual(link.provider, "google-oauth2")
+        self.assertEqual(link.uid, "110169484474386276334")
 
         # * Second case where google social user exists (only login)
 
         self.headers["HTTP_X_CSRFTOKEN"] = response1.data["csrf_token"]
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "defaultuser@example.com",
             "given_name": "Jane",
             "family_name": "Doe",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
+            "email_verified": True,
         }
 
         response2 = self.client.post(
@@ -863,10 +912,12 @@ class SocialLoginViewDBTests(APITestCase):
         # * First case where google social user doesn't exist (create)
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "googleuser@example.com",
             "given_name": "Jane",
             "family_name": "Doe",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image.jpg=s96-c",
+            "email_verified": True,
         }
 
         response1 = self.client.post(
@@ -892,10 +943,12 @@ class SocialLoginViewDBTests(APITestCase):
         self.headers["HTTP_X_CSRFTOKEN"] = response1.data["csrf_token"]
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "googleuser@example.com",
             "given_name": "John",
             "family_name": "Kane William",
             "picture": "https://lh3.googleusercontent.com/a/mock-profile-image2.jpg=s96-c",
+            "email_verified": True,
         }
 
         response2 = self.client.post(
@@ -943,6 +996,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.existing_user.save()
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "defaultuser@example.com",
         }
 
@@ -962,6 +1016,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.existing_user.save()
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "defaultuser@example.com",
         }
 
@@ -980,6 +1035,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.existing_user.save()
 
         mock_user_data.return_value = {
+            "sub": "110169484474386276334",
             "email": "defaultuser@example.com",
         }
 
@@ -990,6 +1046,153 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(
             response.data["error"],
             "Email is not verified. You must verify your email first",
+        )
+
+    # ------- Impersonations -------
+
+    @patch("social_core.backends.google.GoogleOAuth2.user_data")
+    def test_google_login_impersonation_fails(self, mock_user_data):
+        """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
+        mock_user_data.return_value = {
+            "sub": "110169484474386276334",
+            "email": "defaultuser@example.com",
+            "email_verified": False,
+        }
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["error"],
+            "Sorry your email is not verified by the provider. Please verify your email first.",
+        )
+
+    @patch("social_core.backends.facebook.FacebookOAuth2.user_data")
+    def test_facebook_login_impersonation_fails(self, mock_user_data):
+        """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
+        mock_user_data.return_value = {
+            "first_name": "Jane",
+            "last_name": "Doe",
+        }
+
+        self.valid_payload["provider"] = "facebook"
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+        # Auth Exception gets trigger before the code reaches Forbidden validation
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    @patch("social_core.backends.github.GithubOAuth2.user_data")
+    def test_github_login_impersonation_fails(self, mock_user_data):
+        """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
+        mock_user_data.return_value = {
+            "email": "defaultuser@example.com",
+            "emails": [
+                {
+                    "email": "defaultuser@example.com",
+                    "primary": True,
+                    "verified": False,
+                    "visibility": "public",
+                },
+                {
+                    "email": "secondary@github.com",
+                    "primary": False,
+                    "verified": True,
+                    "visibility": None,
+                },
+            ],
+        }
+
+        self.valid_payload["provider"] = "github"
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["error"],
+            "Sorry your email is not verified by the provider. Please verify your email first.",
+        )
+
+    @patch(
+        "social_core.backends.linkedin.LinkedinOpenIdConnect.validate_and_return_id_token"
+    )
+    @patch("social_core.backends.linkedin.LinkedinOpenIdConnect.user_data")
+    def test_linkedin_login_impersonation_fails(
+        self, mock_user_data, mock_validate_token
+    ):
+        """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
+        LINKEDIN_JWT_CLAIMS = {
+            "sub": "auth_li_998877",
+            "email": "defaultuser@example.com",
+            "given_name": "Jane",
+            "family_name": "Doe",
+            "iat": 1718919600,
+        }
+
+        # 1. Bypass the complex cryptographic JWT signature checks and return expected token claims
+        mock_validate_token.return_value = LINKEDIN_JWT_CLAIMS
+
+        # 2. Return the mock user data dict when user info is queried
+        mock_user_data.return_value = {
+            "given_name": "Jane",
+            "family_name": "Doe",
+            "email": "defaultuser@example.com",
+            "email_verified": False,
+        }
+
+        self.valid_payload["provider"] = "linkedin-openidconnect"
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["error"],
+            "Sorry your email is not verified by the provider. Please verify your email first.",
+        )
+
+    @patch("social_core.backends.microsoft.MicrosoftOAuth2.user_data")
+    def test_microsoft_login_impersonation_fails(self, mock_user_data):
+        """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
+        mock_user_data.return_value = {
+            "userPrincipalName": "defaultuser@example.com",
+            "email": "defaultuser@example.com",
+            "xms_edov": False,
+        }
+
+        self.valid_payload["provider"] = "microsoft-graph"
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["error"],
+            "Sorry your email is not verified by the provider. Please verify your email first.",
+        )
+
+    # ------- Linkups -------
+
+    @patch("social_core.backends.amazon.AmazonOAuth2.user_data")
+    def test_amazon_login_linkup_fails(self, mock_user_data):
+        """Runs real pipeline. Custom pipeline raises 403 when user is linked up."""
+        mock_user_data.return_value = {
+            "email": "defaultuser@example.com",
+            "name": "Jane Doe",
+        }
+
+        self.valid_payload["provider"] = "amazon"
+
+        response = self.client.post(
+            self.url, self.valid_payload, format="json", **self.headers
+        )
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(
+            response.data["error"],
+            "You cannot log into an existing account using Amazon. Please log in using your original method.",
         )
 
     # ==========================================
