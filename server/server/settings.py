@@ -233,6 +233,7 @@ SOCIAL_AUTH_PIPELINE = (
     "social_core.pipeline.social_auth.auth_allowed",
     "social_core.pipeline.social_auth.social_user",
     "auth_api.pipelines.login_or_signup",
+    "auth_api.pipelines.enforce_email_verification",
     "auth_api.pipelines.create_custom_user",
     "auth_api.pipelines.update_user_details",
     "social_core.pipeline.social_auth.associate_user",
@@ -272,7 +273,8 @@ SOCIAL_AUTH_REVOKE_TOKENS_ON_DISCONNECT = True
 
 SOCIAL_AUTH_GOOGLE_OAUTH2_KEY = os.getenv("GOOGLE_CLIENT_ID")
 SOCIAL_AUTH_GOOGLE_OAUTH2_SECRET = os.getenv("GOOGLE_CLIENT_SECRET")
-SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["email", "profile"]
+SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["openid", "email", "profile"]
+SOCIAL_AUTH_GOOGLE_OAUTH2_USE_UNIQUE_USER_ID = True
 
 # SOCIAL_AUTH_APPLE_ID_CLIENT = os.getenv("APPLE_CLIENT_ID")
 # SOCIAL_AUTH_APPLE_ID_TEAM = os.getenv("APPLE_TEAM_ID")
@@ -282,7 +284,10 @@ SOCIAL_AUTH_GOOGLE_OAUTH2_SCOPE = ["email", "profile"]
 
 SOCIAL_AUTH_MICROSOFT_GRAPH_KEY = os.getenv("MICROSOFT_CLIENT_ID")
 SOCIAL_AUTH_MICROSOFT_GRAPH_SECRET = os.getenv("MICROSOFT_CLIENT_SECRET")
-SOCIAL_AUTH_MICROSOFT_GRAPH_SCOPE = ["User.Read", "email", "openid", "profile"]
+SOCIAL_AUTH_MICROSOFT_GRAPH_SCOPE = ["openid", "email", "profile", "User.Read"]
+SOCIAL_AUTH_MICROSOFT_GRAPH_EXTRA_DATA = [
+    ("xms_edov", "xms_edov"),
+]
 
 SOCIAL_AUTH_FACEBOOK_KEY = os.getenv("FACEBOOK_CLIENT_ID")
 SOCIAL_AUTH_FACEBOOK_SECRET = os.getenv("FACEBOOK_CLIENT_SECRET")
@@ -294,6 +299,9 @@ SOCIAL_AUTH_FACEBOOK_PROFILE_EXTRA_PARAMS = {
 SOCIAL_AUTH_GITHUB_KEY = os.getenv("GITHUB_CLIENT_ID")
 SOCIAL_AUTH_GITHUB_SECRET = os.getenv("GITHUB_CLIENT_SECRET")
 SOCIAL_AUTH_GITHUB_SCOPE = ["user:email", "read:user"]
+SOCIAL_AUTH_GITHUB_EXTRA_DATA = [
+    ("emails", "emails"),
+]
 
 SOCIAL_AUTH_AMAZON_KEY = os.getenv("AMAZON_CLIENT_ID")
 SOCIAL_AUTH_AMAZON_SECRET = os.getenv("AMAZON_CLIENT_SECRET")

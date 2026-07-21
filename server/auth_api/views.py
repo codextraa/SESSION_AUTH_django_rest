@@ -978,6 +978,28 @@ class SocialLoginView(APIView):
                 value={"error": "Social authentication failed. Something went wrong."},
             ),
             OpenApiExample(
+                name="Amazon Login Linkup Fails",
+                response_only=True,
+                status_codes=["403"],
+                value={
+                    "error": (
+                        "You cannot log into an existing account using Amazon. "
+                        "Please log in using your original method."
+                    )
+                },
+            ),
+            OpenApiExample(
+                name="Unverified Email Check (Provider)",
+                response_only=True,
+                status_codes=["403"],
+                value={
+                    "error": (
+                        "Sorry your email is not verified by the "
+                        "provider. Please verify your email first."
+                    )
+                },
+            ),
+            OpenApiExample(
                 name="Staff Account Check",
                 response_only=True,
                 status_codes=["403"],
@@ -995,7 +1017,7 @@ class SocialLoginView(APIView):
                 value={"error": "Account has been deactivated. Contact your admin"},
             ),
             OpenApiExample(
-                name="Unverified Email Check",
+                name="Unverified Email Check (Local)",
                 response_only=True,
                 status_codes=["403"],
                 value={

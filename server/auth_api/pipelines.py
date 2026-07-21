@@ -44,6 +44,86 @@ def login_or_signup(backend, details, *args, user=None, **kwargs):
     }
 
 
+def enforce_email_verification(
+    backend,
+    details,
+    response,
+    *args,
+    user=None,
+    is_new=False,
+    is_update=False,
+    **kwargs,
+):  # pylint: disable=R0912, R0913
+    """
+    Prevents linking or logging into existing accounts if the
+    OAuth provider's email is untrusted/unverified.
+    """
+    email = details.get("email")
+
+    if not email:
+        raise AuthException(
+            backend,
+            "An email address is required from the authentication provider.",
+        )
+
+    email_verified_providers = [
+        "google-oauth2",
+        "apple-id",
+        "linkedin-openidconnect",
+    ]
+    truth_arr = [True, "true", "True"]
+    return_obj = {
+        "user": user,
+        "is_new": is_new,
+        "is_update": is_update,
+    }
+
+    if backend.name in email_verified_providers:
+        if response.get("email_verified") in truth_arr:
+            return return_obj
+    elif backend.name == "facebook":
+        if response.get("email"):
+            return return_obj
+    elif backend.name == "github":
+        emails = response.get("emails", [])
+        for e in emails:
+            if isinstance(e, dict):
+                if (
+                    e.get("email") == email
+                    and e.get("primary") in truth_arr
+                    and e.get("verified") in truth_arr
+                ):
+                    return return_obj
+    elif backend.name == "microsoft-graph":
+        xms_edov = response.get("xms_edov") or response.get("id_token_claims", {}).get(
+            "xms_edov"
+        )
+        if xms_edov in truth_arr:
+            return return_obj
+    elif backend.name == "amazon":  # Amazon account has a high chance of impersonation
+        if is_new or is_update:
+            return return_obj
+
+        # Block cross-provider account linking from Amazon
+        raise ForbiddenValidationError(
+            {
+                "error": (
+                    "You cannot log into an existing account using Amazon. "
+                    "Please log in using your original method."
+                )
+            }
+        )
+
+    raise ForbiddenValidationError(
+        {
+            "error": (
+                "Sorry your email is not verified by the "
+                "provider. Please verify your email first."
+            )
+        }
+    )
+
+
 def create_custom_user(
     backend,
     details,
