@@ -11,5 +11,6 @@ urlpatterns = [
     path("login/", views.LoginView.as_view(), name="login"),
     path("two-fa-login/", views.TwoFAView.as_view(), name="two-fa-login"),
     path("refresh/", views.RefreshSessionView.as_view(), name="refresh"),
+    path("social-login/", views.SocialLoginView.as_view(), name="social-login"),
     path("logout/", views.LogoutView.as_view(), name="logout"),
 ]
