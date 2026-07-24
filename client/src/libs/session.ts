@@ -12,9 +12,9 @@ let SECRET_KEY: string | undefined;
 
 const get_secret_key = async (): Promise<void> => {
   if (typeof window !== "undefined") {
-    const response = await fetch("/api/auth-secret-key");
+    const response = await fetch("/api/cookie-secret-key");
     const data = await response.json();
-    SECRET_KEY = data.auth_secret_key;
+    SECRET_KEY = data.cookie_secret_key;
   } else {
     SECRET_KEY = process.env.AUTH_SECRET_KEY;
   }
