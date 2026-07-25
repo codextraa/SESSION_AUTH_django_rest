@@ -7,35 +7,14 @@ secrets:
     file: ./.infisical.json
 
 services:
-  session-djrest-backend:
-    container_name: session-djrest-backend
-    build: 
-      context: ..
-      dockerfile: ./docker/backend/Dockerfile
-    image: session-djrest-backend:Python-3.12-slim-D
-    ports:
-      - "8002:8000"
-    secrets:
-      - infisical_token
-      - .infisical.json
-    entrypoint: sh -c 
-    command: ["chmod +x /app/run.sh && /app/run.sh"]
-    volumes:
-      - ../backend:/app
-    depends_on:
-      session-djrest-redis:
-        condition: service_healthy
-    networks:
-      - web-app-network
-
   session-djrest-server:
     container_name: session-djrest-server
     build: 
       context: ..
       dockerfile: ./docker/server/Dockerfile
-    image: session-djrest-server:Python-3.12-slim-D
+    image: session-djrest-server:Python-3.14-slim-D
     ports:
-      - "8003:8000"
+      - "8001:8000"
     secrets:
       - infisical_token
       - .infisical.json
@@ -49,35 +28,14 @@ services:
     networks:
       - web-app-network
 
-  session-djrest-frontend:
-    container_name: session-djrest-frontend
-    build: 
-      context: ..
-      dockerfile: ./docker/frontend/Dockerfile
-    image: session-djrest-frontend:Node-22-alpine-D
-    ports:
-      - "3002:3000"
-    secrets:
-      - infisical_token
-      - .infisical.json
-    entrypoint: sh -c 
-    command: ["chmod +x /app/run.sh && /app/run.sh"]
-    volumes:
-      - ../frontend:/app
-      - frontend_node_modules:/app/node_modules
-    extra_hosts:
-      - "session-djrest.dev:host-gateway"
-    networks:
-      - web-app-network
-
   session-djrest-client:
     container_name: session-djrest-client
     build: 
       context: ..
       dockerfile: ./docker/client/Dockerfile
-    image: session-djrest-client:Node-22-alpine-D
+    image: session-djrest-client:Node-24-alpine-D
     ports:
-      - "3003:3000"
+      - "3001:3000"
     secrets:
       - infisical_token
       - .infisical.json
@@ -110,7 +68,6 @@ services:
       - web-app-network
 
 volumes:
-  frontend_node_modules:
   client_node_modules:
   redis-data:
 
