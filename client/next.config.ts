@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: process.env.NEXTJS_IMAGE_HOST || "localhost",
+        hostname: process.env.NEXT_IMAGE_HOST || "localhost",
       },
       {
         protocol: "https",

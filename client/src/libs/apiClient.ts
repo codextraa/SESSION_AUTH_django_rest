@@ -55,9 +55,7 @@ export class ApiClient {
       if (contentType.includes("application/json")) {
         try {
           const errorData = await response.json();
-          if (errorData.errors) {
-            return { error: errorData.errors }; // Return specific error
-          }
+          return errorData;
         } catch (e) {
           console.error("Error parsing error response:", e);
           return { error: "Unexpected error occurred." };
@@ -108,8 +106,8 @@ export class ApiClient {
       Accept: "application/json",
       ...(cookieHeader && { Cookie: cookieHeader.trim() }),
       ...(csrfToken && { "X-CSRFToken": csrfToken }),
-      "NEXT-X-API-KEY": process.env.NEXT_PUBLIC_API_SECRET_KEY || "",
-      ...(HTTPS && { Referer: process.env.NEXT_PUBLIC_BASE_HTTPS_URL || "" }),
+      "NEXT-X-API-KEY": process.env.NEXT_API_SECRET_KEY || "",
+      ...(HTTPS && { Referer: process.env.NEXT_BASE_HTTPS_URL || "" }),
     };
 
     const options: RequestInit = {

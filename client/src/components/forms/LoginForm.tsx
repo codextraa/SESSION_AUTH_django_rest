@@ -21,6 +21,9 @@ import {
 } from "@/components/buttons/button";
 import { DEFAULT_LOGIN_REDIRECT } from "@/route";
 
+const V3_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY_V3 || "";
+const V2_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY_V2 || "";
+
 const initialState: PrevStateLoginForm = {
   success: "",
   pre_auth_token: false,
@@ -36,7 +39,6 @@ export default function LoginForm() {
   );
 
   const router = useRouter();
-  const [v3SiteKey, setV3SiteKey] = useState<string>("");
   const [recaptchaToken, setRecaptchaToken] = useState<string>("");
   const [currentVersion, setCurrentVersion] = useState<"v3" | "v2">("v3");
   const [isFallback, setIsFallback] = useState<boolean>(false);
@@ -61,12 +63,16 @@ export default function LoginForm() {
   };
 
   const executeV3Telemetry = useCallback(() => {
-    if (!v3SiteKey || currentVersion !== "v3" || !window.grecaptcha?.enterprise)
+    if (
+      !V3_SITE_KEY ||
+      currentVersion !== "v3" ||
+      !window.grecaptcha?.enterprise
+    )
       return;
 
     window.grecaptcha.enterprise.ready(async () => {
       try {
-        const token = await window.grecaptcha.enterprise.execute(v3SiteKey, {
+        const token = await window.grecaptcha.enterprise.execute(V3_SITE_KEY, {
           action: "login",
         });
         setRecaptchaToken(token);
@@ -75,7 +81,7 @@ export default function LoginForm() {
         console.error("V3 Smart Telemetry execution failed:", error);
       }
     });
-  }, [v3SiteKey, currentVersion]);
+  }, [currentVersion]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -105,19 +111,6 @@ export default function LoginForm() {
       if (timer) clearTimeout(timer);
     };
   }, [state, router]);
-
-  useEffect(() => {
-    async function fetchV3Key() {
-      try {
-        const response = await fetch("/api/recaptcha-key-v3"); // V3 key endpoint
-        const data = await response.json();
-        if (data.sitekey) setV3SiteKey(data.sitekey);
-      } catch (error) {
-        console.error("Failed to load reCAPTCHA v3 sitekey", error);
-      }
-    }
-    fetchV3Key();
-  }, []);
 
   // SMART BACKGROUND TELEMETRY: Fires only on valid activity windows
   const handleUserActivity = () => {
@@ -165,11 +158,11 @@ export default function LoginForm() {
       return;
     }
 
-    if (currentVersion === "v3" && v3SiteKey) {
+    if (currentVersion === "v3" && V3_SITE_KEY) {
       removeRecaptchaScripts();
 
       const script = document.createElement("script");
-      script.src = `https://www.google.com/recaptcha/enterprise.js?render=${v3SiteKey}`;
+      script.src = `https://www.google.com/recaptcha/enterprise.js?render=${V3_SITE_KEY}`;
       script.async = true;
       script.defer = true;
       script.onload = () => executeV3Telemetry();
@@ -182,41 +175,37 @@ export default function LoginForm() {
       return;
     }
 
-    if (currentVersion === "v2") {
+    if (currentVersion === "v2" && V2_SITE_KEY) {
       removeRecaptchaScripts();
 
-      window.onloadCallback = async () => {
+      window.onloadCallback = () => {
         const container = document.getElementById("recaptcha-container");
         if (!container || v2WidgetIdRef.current !== null) return;
         container.innerHTML = "";
 
         if (window.grecaptcha?.enterprise) {
           try {
-            const response = await fetch("/api/recaptcha-key-v2");
-            const data = await response.json();
-            if (data.sitekey) {
-              const widgetId = window.grecaptcha.enterprise.render(
-                "recaptcha-container",
-                {
-                  sitekey: data.sitekey,
-                  theme: "light",
-                  action: "login",
-                  callback: (token: string) => {
-                    setIsV2Verified(true);
-                    setRecaptchaToken(token);
-                  },
-                  "expired-callback": () => {
-                    setIsV2Verified(false);
-                    setRecaptchaToken("");
-                  },
-                  "error-callback": () => {
-                    setIsV2Verified(false);
-                    setRecaptchaToken("");
-                  },
+            const widgetId = window.grecaptcha.enterprise.render(
+              "recaptcha-container",
+              {
+                sitekey: V2_SITE_KEY,
+                theme: "light",
+                action: "login",
+                callback: (token: string) => {
+                  setIsV2Verified(true);
+                  setRecaptchaToken(token);
                 },
-              );
-              v2WidgetIdRef.current = widgetId;
-            }
+                "expired-callback": () => {
+                  setIsV2Verified(false);
+                  setRecaptchaToken("");
+                },
+                "error-callback": () => {
+                  setIsV2Verified(false);
+                  setRecaptchaToken("");
+                },
+              },
+            );
+            v2WidgetIdRef.current = widgetId;
           } catch (err) {
             console.error("Failed mounting V2 fallback framework", err);
           }
@@ -235,13 +224,7 @@ export default function LoginForm() {
         removeRecaptchaScripts();
       }
     };
-  }, [
-    currentVersion,
-    v3SiteKey,
-    isFallback,
-    isLoginSuccessful,
-    executeV3Telemetry,
-  ]);
+  }, [currentVersion, isFallback, isLoginSuccessful, executeV3Telemetry]);
 
   return (
     <>
