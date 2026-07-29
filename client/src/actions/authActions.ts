@@ -1,10 +1,11 @@
 "use server";
 
-import { login, twoFALogin, logout } from "@/libs/api";
+import { login, twoFALogin, socialLogin, logout } from "@/libs/api";
 import {
   PrevStateLoginForm,
   LoginErrorFields,
   TwoFAErrorFields,
+  SocialLoginErrorFields,
   PrevStateTwoFALoginForm,
   LogoutAPIResponse,
 } from "@/types/types";
@@ -88,6 +89,48 @@ const twoFAError = async (response: object): Promise<TwoFAErrorFields> => {
     if (backendErrors.otp?.[0]) {
       const msg = backendErrors.otp[0];
       errorMessages.otp =
+        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
+    }
+
+    return errorMessages;
+  } else if (
+    typeof response === "object" &&
+    "error" in response &&
+    response.error &&
+    typeof response.error === "string"
+  ) {
+    return {
+      general: response.error,
+    };
+  }
+
+  return {
+    general: "An error occurred during login.",
+  };
+};
+
+const socialLoginError = async (
+  response: object,
+): Promise<SocialLoginErrorFields> => {
+  if (
+    typeof response === "object" &&
+    "error" in response &&
+    response.error &&
+    typeof response.error === "object"
+  ) {
+    const backendErrors = response.error as Record<string, string[]>;
+
+    const errorMessages: SocialLoginErrorFields = {};
+
+    if (backendErrors.provider?.[0]) {
+      const msg = backendErrors.provider[0];
+      errorMessages.provider =
+        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
+    }
+
+    if (backendErrors.social_auth_token?.[0]) {
+      const msg = backendErrors.social_auth_token[0];
+      errorMessages.social_auth_token =
         msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
     }
 
@@ -323,6 +366,89 @@ export async function twoFALoginAction(
     ) {
       await setSessionCookie(response);
       await deletePreAuthCookie();
+      return {
+        success: "Login Successful.",
+        error: {},
+      };
+    } else {
+      return {
+        success: "",
+        error: {
+          general: "An error occurred during login.",
+        },
+      };
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      success: "",
+      error: {
+        general: "An error occurred during login.",
+      },
+    };
+  }
+}
+
+export async function socialLoginAction(
+  provider: string,
+  social_auth_token: string,
+): Promise<PrevStateTwoFALoginForm> {
+  const localErrors: SocialLoginErrorFields = {};
+
+  if (typeof provider !== "string") {
+    localErrors.provider = "Invalid form data submission.";
+  } else if (!provider) {
+    localErrors.provider = "Provider is required.";
+  }
+
+  if (typeof social_auth_token !== "string") {
+    localErrors.social_auth_token = "Invalid form data submission.";
+  } else if (!social_auth_token) {
+    localErrors.social_auth_token = "Social auth token is required.";
+  }
+
+  if (Object.keys(localErrors).length > 0) {
+    return {
+      success: "",
+      error: localErrors,
+    };
+  }
+
+  const data = {
+    provider: provider,
+    social_auth_token: social_auth_token,
+  };
+
+  try {
+    const response = await socialLogin(data);
+    if (response && "error" in response && response.error) {
+      const SocialLoginErrorResponse = await socialLoginError(response);
+      return {
+        success: "",
+        error: SocialLoginErrorResponse,
+      };
+    } else if (
+      typeof response === "object" &&
+      "sessionid" in response &&
+      response.sessionid &&
+      typeof response.session_expiry === "string" &&
+      "session_expiry" in response &&
+      response.session_expiry &&
+      typeof response.session_expiry === "string" &&
+      "user_id" in response &&
+      response.user_id &&
+      typeof response.user_id === "number" &&
+      "user_role" in response &&
+      response.user_role &&
+      typeof response.user_role === "string" &&
+      "csrf_token" in response &&
+      response.csrf_token &&
+      typeof response.csrf_token === "string" &&
+      "csrf_token_expiry" in response &&
+      response.csrf_token_expiry &&
+      typeof response.csrf_token_expiry === "string"
+    ) {
+      await setSessionCookie(response);
       return {
         success: "Login Successful.",
         error: {},

@@ -77,6 +77,11 @@ export interface TwoFAErrorFields {
   general?: string;
 }
 
+export interface SocialLoginErrorFields {
+  provider?: string;
+  social_auth_token?: string;
+  general?: string;
+}
 export interface PrevStateTwoFALoginForm {
   success: string;
   error: object;
@@ -85,6 +90,11 @@ export interface PrevStateTwoFALoginForm {
 export interface TwoFALoginInput {
   pre_auth_token: string | unknown | undefined;
   otp: string | unknown | undefined;
+}
+
+export interface SocialLoginInput {
+  provider: string;
+  social_auth_token: string;
 }
 
 export type TwoFASessionAPIResponse = SessionResponseSuccess | ErrorResponse;

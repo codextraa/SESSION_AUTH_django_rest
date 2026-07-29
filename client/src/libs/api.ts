@@ -6,6 +6,7 @@ import {
   CreateUserData,
   CreateUserAPIResponse,
   TwoFALoginInput,
+  SocialLoginInput,
   TwoFASessionAPIResponse,
   LogoutAPIResponse,
 } from "@/types/types";
@@ -58,6 +59,12 @@ export const twoFALogin = async (
   credentials: TwoFALoginInput,
 ): Promise<TwoFASessionAPIResponse> => {
   return apiClient.post("/two-fa-login/", credentials);
+};
+
+export const socialLogin = async (
+  data: SocialLoginInput,
+): Promise<TwoFASessionAPIResponse> => {
+  return apiClient.post("/social-login/", data);
 };
 
 export const logout = async (): Promise<LogoutAPIResponse> => {

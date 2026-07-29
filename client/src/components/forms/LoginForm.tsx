@@ -17,7 +17,10 @@ import {
   EyeButton,
   GoogleLoginButton,
   FacebookLoginButton,
-  GitHubLoginButton,
+  GithubLoginButton,
+  MicrosoftLoginButton,
+  LinkedinLoginButton,
+  AmazonLoginButton,
 } from "@/components/buttons/button";
 import { DEFAULT_LOGIN_REDIRECT } from "@/route";
 
@@ -347,7 +350,10 @@ export default function LoginForm() {
             />
             <GoogleLoginButton />
             <FacebookLoginButton />
-            <GitHubLoginButton />
+            <GithubLoginButton />
+            <MicrosoftLoginButton />
+            <LinkedinLoginButton />
+            <AmazonLoginButton />
           </div>
           <div className="w-full text-center font-['Merriweather'] text-[15px] text-[#000000]">
             Want to create an account?{" "}

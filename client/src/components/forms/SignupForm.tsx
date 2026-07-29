@@ -17,7 +17,10 @@ import {
   EyeButton,
   GoogleLoginButton,
   FacebookLoginButton,
-  GitHubLoginButton,
+  GithubLoginButton,
+  MicrosoftLoginButton,
+  LinkedinLoginButton,
+  AmazonLoginButton,
 } from "@/components/buttons/button";
 
 const initialState: SignUpFormState = {
@@ -440,7 +443,16 @@ export default function SignUpForm() {
               <FacebookLoginButton />
             </div>
             <div className="w-full h-[45px] relative">
-              <GitHubLoginButton />
+              <GithubLoginButton />
+            </div>
+            <div className="w-full h-[45px] relative">
+              <MicrosoftLoginButton />
+            </div>
+            <div className="w-full h-[45px] relative">
+              <LinkedinLoginButton />
+            </div>
+            <div className="w-full h-[45px] relative">
+              <AmazonLoginButton />
             </div>
           </div>
 
