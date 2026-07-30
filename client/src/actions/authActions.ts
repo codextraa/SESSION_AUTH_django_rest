@@ -1,14 +1,5 @@
 "use server";
 
-import { login, twoFALogin, socialLogin, logout } from "@/libs/api";
-import {
-  PrevStateLoginForm,
-  LoginErrorFields,
-  TwoFAErrorFields,
-  SocialLoginErrorFields,
-  PrevStateTwoFALoginForm,
-  LogoutAPIResponse,
-} from "@/types/types";
 import {
   setSessionCookie,
   deleteSessionCookie,
@@ -16,140 +7,24 @@ import {
   getPreAuthTokenFromSession,
   deletePreAuthCookie,
 } from "@/libs/cookie";
-
-const userError = async (response: object): Promise<LoginErrorFields> => {
-  if (
-    typeof response === "object" &&
-    "error" in response &&
-    response.error &&
-    typeof response.error === "object"
-  ) {
-    const backendErrors = response.error as Record<string, string[]>;
-
-    const errorMessages: LoginErrorFields = {};
-
-    if (backendErrors.email_or_username?.[0]) {
-      const msg = backendErrors.email_or_username[0];
-      errorMessages.email_or_username =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    if (backendErrors.password?.[0]) {
-      const msg = backendErrors.password[0];
-      errorMessages.password =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    if (backendErrors.recaptcha_token?.[0]) {
-      const msg = backendErrors.recaptcha_token[0];
-      errorMessages.recaptcha_token =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    if (backendErrors.recaptcha_version?.[0]) {
-      const msg = backendErrors.recaptcha_version[0];
-      errorMessages.recaptcha_version =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    return errorMessages;
-  } else if (
-    typeof response === "object" &&
-    "error" in response &&
-    response.error &&
-    typeof response.error === "string"
-  ) {
-    return {
-      general: response.error,
-    };
-  }
-
-  return {
-    general: "An error occurred during login.",
-  };
-};
-
-const twoFAError = async (response: object): Promise<TwoFAErrorFields> => {
-  if (
-    typeof response === "object" &&
-    "error" in response &&
-    response.error &&
-    typeof response.error === "object"
-  ) {
-    const backendErrors = response.error as Record<string, string[]>;
-
-    const errorMessages: TwoFAErrorFields = {};
-
-    if (backendErrors.pre_auth_token?.[0]) {
-      const msg = backendErrors.pre_auth_token[0];
-      errorMessages.pre_auth_token =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    if (backendErrors.otp?.[0]) {
-      const msg = backendErrors.otp[0];
-      errorMessages.otp =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    return errorMessages;
-  } else if (
-    typeof response === "object" &&
-    "error" in response &&
-    response.error &&
-    typeof response.error === "string"
-  ) {
-    return {
-      general: response.error,
-    };
-  }
-
-  return {
-    general: "An error occurred during login.",
-  };
-};
-
-const socialLoginError = async (
-  response: object,
-): Promise<SocialLoginErrorFields> => {
-  if (
-    typeof response === "object" &&
-    "error" in response &&
-    response.error &&
-    typeof response.error === "object"
-  ) {
-    const backendErrors = response.error as Record<string, string[]>;
-
-    const errorMessages: SocialLoginErrorFields = {};
-
-    if (backendErrors.provider?.[0]) {
-      const msg = backendErrors.provider[0];
-      errorMessages.provider =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    if (backendErrors.social_auth_token?.[0]) {
-      const msg = backendErrors.social_auth_token[0];
-      errorMessages.social_auth_token =
-        msg.charAt(0).toUpperCase() + msg.slice(1).toLowerCase();
-    }
-
-    return errorMessages;
-  } else if (
-    typeof response === "object" &&
-    "error" in response &&
-    response.error &&
-    typeof response.error === "string"
-  ) {
-    return {
-      general: response.error,
-    };
-  }
-
-  return {
-    general: "An error occurred during login.",
-  };
-};
+import { login, twoFALogin, socialLogin, logout } from "@/libs/api";
+import {
+  PrevStateLoginForm,
+  LoginErrorFields,
+  TwoFAErrorFields,
+  SocialLoginErrorFields,
+  PrevStateTwoFALoginForm,
+  PrevStateSocialLogin,
+  LogoutAPIResponse,
+} from "@/types/authTypes";
+import {
+  loginInputError,
+  twoFAInputError,
+  socialLoginInputError,
+  loginServerError,
+  twoFAServerError,
+  socialLoginServerError
+} from "@/libs/errors";
 
 export async function loginAction(
   prevState: PrevStateLoginForm,
@@ -163,31 +38,14 @@ export async function loginAction(
   const recaptcha_version =
     formData.get("recaptchaVersion")?.toString().trim() || "";
 
-  const localErrors: LoginErrorFields = {};
+  const credentials = {
+    email_or_username: email_or_username,
+    password: password,
+    recaptcha_token: recaptcha_token,
+    recaptcha_version: recaptcha_version,
+  };
 
-  if (typeof email_or_username !== "string") {
-    localErrors.email_or_username = "Invalid form data submission.";
-  } else if (!email_or_username) {
-    localErrors.email_or_username = "Email or username is required.";
-  }
-
-  if (typeof password !== "string") {
-    localErrors.password = "Invalid form data submission.";
-  } else if (!password) {
-    localErrors.password = "Password is required.";
-  }
-
-  if (typeof recaptcha_token !== "string") {
-    localErrors.recaptcha_token = "Invalid form data submission.";
-  } else if (!recaptcha_token) {
-    localErrors.recaptcha_token = "Recaptcha token is required.";
-  }
-
-  if (typeof recaptcha_version !== "string") {
-    localErrors.recaptcha_version = "Invalid form data submission.";
-  } else if (!recaptcha_version) {
-    localErrors.recaptcha_version = "Recaptcha version is required.";
-  }
+  const localErrors: LoginErrorFields = loginInputError(credentials);
 
   if (Object.keys(localErrors).length > 0) {
     return {
@@ -198,13 +56,6 @@ export async function loginAction(
       password: "",
     };
   }
-
-  const credentials = {
-    email_or_username: email_or_username,
-    password: password,
-    recaptcha_token: recaptcha_token,
-    recaptcha_version: recaptcha_version,
-  };
 
   try {
     const response = await login(credentials);
@@ -225,17 +76,17 @@ export async function loginAction(
           password: password,
         };
       } else {
-        const errorResponse = await userError(response);
+        const LoginErrorResponse: LoginErrorFields = loginServerError(response);
         return {
           success: "",
           pre_auth_token: false,
-          error: errorResponse,
+          error: LoginErrorResponse,
           email_or_username: "",
           password: "",
         };
       }
     } else if (
-      response &&
+      typeof response === "object" &&
       "success" in response &&
       response.success &&
       "pre_auth_token" in response &&
@@ -253,22 +104,16 @@ export async function loginAction(
       typeof response === "object" &&
       "sessionid" in response &&
       response.sessionid &&
-      typeof response.session_expiry === "string" &&
       "session_expiry" in response &&
       response.session_expiry &&
-      typeof response.session_expiry === "string" &&
       "user_id" in response &&
       response.user_id &&
-      typeof response.user_id === "number" &&
       "user_role" in response &&
       response.user_role &&
-      typeof response.user_role === "string" &&
       "csrf_token" in response &&
       response.csrf_token &&
-      typeof response.csrf_token === "string" &&
       "csrf_token_expiry" in response &&
-      response.csrf_token_expiry &&
-      typeof response.csrf_token_expiry === "string"
+      response.csrf_token_expiry
     ) {
       await setSessionCookie(response);
       return {
@@ -306,22 +151,15 @@ export async function twoFALoginAction(
   prevState: PrevStateTwoFALoginForm,
   formData: FormData,
 ): Promise<PrevStateTwoFALoginForm> {
-  const pre_auth_token = await getPreAuthTokenFromSession();
+  const pre_auth_token = await getPreAuthTokenFromSession() || "";
   const otp = formData.get("otp")?.toString().trim() || "";
 
-  const localErrors: TwoFAErrorFields = {};
+  const data = {
+    pre_auth_token: pre_auth_token,
+    otp: otp,
+  };
 
-  if (typeof pre_auth_token !== "string") {
-    localErrors.pre_auth_token = "Invalid form data submission.";
-  } else if (!pre_auth_token) {
-    localErrors.pre_auth_token = "Token is not generated.";
-  }
-
-  if (typeof otp !== "string" || typeof parseInt(otp) !== "number") {
-    localErrors.otp = "Invalid form data submission.";
-  } else if (!otp) {
-    localErrors.otp = "OTP is required.";
-  }
+  const localErrors: TwoFAErrorFields = twoFAInputError(data);
 
   if (Object.keys(localErrors).length > 0) {
     return {
@@ -330,15 +168,10 @@ export async function twoFALoginAction(
     };
   }
 
-  const data = {
-    pre_auth_token: pre_auth_token,
-    otp: otp,
-  };
-
   try {
     const response = await twoFALogin(data);
     if (response && "error" in response && response.error) {
-      const TwoFAErrorResponse = await twoFAError(response);
+      const TwoFAErrorResponse: TwoFAErrorFields = await twoFAServerError(response);
       return {
         success: "",
         error: TwoFAErrorResponse,
@@ -347,22 +180,16 @@ export async function twoFALoginAction(
       typeof response === "object" &&
       "sessionid" in response &&
       response.sessionid &&
-      typeof response.session_expiry === "string" &&
       "session_expiry" in response &&
       response.session_expiry &&
-      typeof response.session_expiry === "string" &&
       "user_id" in response &&
       response.user_id &&
-      typeof response.user_id === "number" &&
       "user_role" in response &&
       response.user_role &&
-      typeof response.user_role === "string" &&
       "csrf_token" in response &&
       response.csrf_token &&
-      typeof response.csrf_token === "string" &&
       "csrf_token_expiry" in response &&
-      response.csrf_token_expiry &&
-      typeof response.csrf_token_expiry === "string"
+      response.csrf_token_expiry
     ) {
       await setSessionCookie(response);
       await deletePreAuthCookie();
@@ -392,20 +219,13 @@ export async function twoFALoginAction(
 export async function socialLoginAction(
   provider: string,
   social_auth_token: string,
-): Promise<PrevStateTwoFALoginForm> {
-  const localErrors: SocialLoginErrorFields = {};
+): Promise<PrevStateSocialLogin> {
+  const data = {
+    provider: provider,
+    social_auth_token: social_auth_token,
+  };
 
-  if (typeof provider !== "string") {
-    localErrors.provider = "Invalid form data submission.";
-  } else if (!provider) {
-    localErrors.provider = "Provider is required.";
-  }
-
-  if (typeof social_auth_token !== "string") {
-    localErrors.social_auth_token = "Invalid form data submission.";
-  } else if (!social_auth_token) {
-    localErrors.social_auth_token = "Social auth token is required.";
-  }
+  const localErrors: SocialLoginErrorFields = socialLoginInputError(data);
 
   if (Object.keys(localErrors).length > 0) {
     return {
@@ -414,15 +234,10 @@ export async function socialLoginAction(
     };
   }
 
-  const data = {
-    provider: provider,
-    social_auth_token: social_auth_token,
-  };
-
   try {
     const response = await socialLogin(data);
     if (response && "error" in response && response.error) {
-      const SocialLoginErrorResponse = await socialLoginError(response);
+      const SocialLoginErrorResponse: SocialLoginErrorFields = await socialLoginServerError(response);
       return {
         success: "",
         error: SocialLoginErrorResponse,
@@ -431,22 +246,16 @@ export async function socialLoginAction(
       typeof response === "object" &&
       "sessionid" in response &&
       response.sessionid &&
-      typeof response.session_expiry === "string" &&
       "session_expiry" in response &&
       response.session_expiry &&
-      typeof response.session_expiry === "string" &&
       "user_id" in response &&
       response.user_id &&
-      typeof response.user_id === "number" &&
       "user_role" in response &&
       response.user_role &&
-      typeof response.user_role === "string" &&
       "csrf_token" in response &&
       response.csrf_token &&
-      typeof response.csrf_token === "string" &&
       "csrf_token_expiry" in response &&
-      response.csrf_token_expiry &&
-      typeof response.csrf_token_expiry === "string"
+      response.csrf_token_expiry
     ) {
       await setSessionCookie(response);
       return {

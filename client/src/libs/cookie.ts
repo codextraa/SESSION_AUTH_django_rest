@@ -18,7 +18,7 @@ import {
   SessionResponse,
   SessionResponseSuccess,
   PreAuthResponseSuccess,
-} from "@/types/types";
+} from "@/types/authTypes";
 
 export const setSessionCookie = async (
   data: SessionResponseSuccess,

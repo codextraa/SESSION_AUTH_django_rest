@@ -5,7 +5,7 @@ import {
   CSRFTokenResponseSuccess,
   SessionResponseSuccess,
   PreAuthResponseSuccess,
-} from "@/types/types";
+} from "@/types/authTypes";
 
 const ALGORITHM = "AES-GCM";
 const SECRET_KEY: string | undefined = process.env.NEXT_COOKIE_SECRET_KEY;
