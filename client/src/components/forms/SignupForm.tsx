@@ -11,7 +11,7 @@ import {
   useCallback,
 } from "react";
 import { createUserAction } from "@/actions/userActions";
-import { SignUpFormState } from "@/types/types";
+import { SignUpFormState } from "@/types/authTypes";
 import {
   FormButton,
   EyeButton,
@@ -176,7 +176,7 @@ export default function SignUpForm() {
 
   useEffect(() => {
     return () => {
-      window.onloadCallback = () => {};
+      window.onloadCallback = () => { };
     };
   }, []);
 

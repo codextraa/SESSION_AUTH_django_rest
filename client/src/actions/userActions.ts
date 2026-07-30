@@ -7,7 +7,7 @@ import {
   CreateUserData,
   SignUpErrorResponse,
   SignUpPasswordErrorResponse,
-} from "@/types/types";
+} from "@/types/authTypes";
 
 const userError = async (
   response: CreateUserErrorResponse,
