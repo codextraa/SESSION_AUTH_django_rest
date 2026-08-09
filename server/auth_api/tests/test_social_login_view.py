@@ -20,7 +20,8 @@ class SocialLoginViewTests(APITestCase):
 
         self.valid_payload = {
             "provider": "google-oauth2",
-            "social_auth_token": "mock_auth_js_token_123",
+            "social_auth_code": "mock_oauth_code_456",
+            "redirect_uri": "https://myapp.com/api/auth/callback/google",
         }
 
         csrf_url = reverse("csrf-token")
@@ -60,25 +61,45 @@ class SocialLoginViewTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(response.data["provider"][0], "Provider is required.")
 
-    def test_missing_social_auth_token(self):
-        """Test 400 bad request when social_auth_token is missing."""
+    def test_missing_social_auth_code(self):
+        """Test 400 bad request when social_auth_code is missing."""
         payload = self.valid_payload.copy()
-        del payload["social_auth_token"]
+        del payload["social_auth_code"]
 
         response = self.client.post(self.url, payload, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertIn("social_auth_token", response.data)
-        self.assertEqual(response.data["social_auth_token"][0], "Token is required.")
+        self.assertIn("social_auth_code", response.data)
+        self.assertEqual(response.data["social_auth_code"][0], "Code is required.")
 
-        payload["social_auth_token"] = None
+        payload["social_auth_code"] = None
         response = self.client.post(self.url, payload, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["social_auth_token"][0], "Token is required.")
+        self.assertEqual(response.data["social_auth_code"][0], "Code is required.")
 
-        payload["social_auth_token"] = ""
+        payload["social_auth_code"] = ""
         response = self.client.post(self.url, payload, format="json", **self.headers)
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
-        self.assertEqual(response.data["social_auth_token"][0], "Token is required.")
+        self.assertEqual(response.data["social_auth_code"][0], "Code is required.")
+
+    def test_missing_redirect_uri(self):
+        """Test 400 bad request when social_auth_code is missing."""
+        payload = self.valid_payload.copy()
+        del payload["redirect_uri"]
+
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("redirect_uri", response.data)
+        self.assertEqual(response.data["redirect_uri"][0], "Redirect URI is required.")
+
+        payload["redirect_uri"] = None
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["redirect_uri"][0], "Redirect URI is required.")
+
+        payload["redirect_uri"] = ""
+        response = self.client.post(self.url, payload, format="json", **self.headers)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data["redirect_uri"][0], "Redirect URI is required.")
 
     # ==========================================
     # CSRFTOKEN FAILURE TEST
@@ -115,6 +136,10 @@ class SocialLoginViewTests(APITestCase):
         self.assertEqual(response.data["error"], "Unexpected database connection drop.")
 
 
+@patch(
+    "social_core.backends.oauth.BaseOAuth2.request_access_token",
+    return_value={"access_token": "mocked_access_token_123", "token_type": "Bearer"},
+)
 class SocialLoginViewDBTests(APITestCase):
 
     def setUp(self):
@@ -123,7 +148,8 @@ class SocialLoginViewDBTests(APITestCase):
 
         self.valid_payload = {
             "provider": "google-oauth2",
-            "social_auth_token": "mock_auth_js_token_123",
+            "social_auth_code": "mock_google_oauth_code_456",
+            "redirect_uri": "https://myapp.com/api/auth/callback/google",
         }
 
         csrf_url = reverse("csrf-token")
@@ -160,7 +186,7 @@ class SocialLoginViewDBTests(APITestCase):
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
     def test_google_user_creation_with_first_and_last_name_picture(
-        self, mock_user_data
+        self, mock_user_data, mock_req_token
     ):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
@@ -205,12 +231,15 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertIn("user_", new_user.username)
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_creation_with_fullname(self, mock_user_data):
+    def test_google_user_creation_with_fullname(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "sub": "110169484474386276334",
             "email": "googleuser2@example.com",
             "name": "John Kane William",
+            "given_name": None,
+            "family_name": None,
+            "picture": "",
             "email_verified": True,
         }
 
@@ -233,12 +262,17 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(new_user.auth_provider, "google")
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_creation_with_half_fullname(self, mock_user_data):
+    def test_google_user_creation_with_half_fullname(
+        self, mock_user_data, mock_req_token
+    ):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "sub": "110169484474386276334",
             "email": "googleuser3@example.com",
             "name": "John",
+            "given_name": None,
+            "family_name": None,
+            "picture": "",
             "email_verified": True,
         }
 
@@ -261,12 +295,14 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(new_user.auth_provider, "google")
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_creation_without_picture(self, mock_user_data):
+    def test_google_user_creation_without_picture(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "sub": "110169484474386276334",
             "email": "googleuser4@example.com",
             "name": "John",
+            "given_name": None,
+            "family_name": None,
             "picture": "",
             "email_verified": True,
         }
@@ -290,7 +326,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(new_user.auth_provider, "google")
 
     @patch("social_core.backends.amazon.AmazonOAuth2.user_data")
-    def test_amazon_user_creation(self, mock_user_data):
+    def test_amazon_user_creation(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "email": "amazonuser@example.com",
@@ -317,8 +353,14 @@ class SocialLoginViewDBTests(APITestCase):
         )
         self.assertEqual(new_user.auth_provider, "amazon")
 
+    @patch(
+        "social_core.backends.facebook.FacebookOAuth2.request",
+        return_value=MagicMock(
+            status_code=200, json=lambda: {"access_token": "mocked_fb_token"}
+        ),
+    )
     @patch("social_core.backends.facebook.FacebookOAuth2.user_data")
-    def test_facebook_user_creation(self, mock_user_data):
+    def test_facebook_user_creation(self, mock_user_data, mock_fb_req, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "email": "facebookuser@example.com",
@@ -355,7 +397,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(new_user.auth_provider, "facebook")
 
     @patch("social_core.backends.github.GithubOAuth2.user_data")
-    def test_github_user_creation(self, mock_user_data):
+    def test_github_user_creation(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "email": "githubuser@example.com",
@@ -398,10 +440,19 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(new_user.auth_provider, "github")
 
     @patch(
+        "social_core.backends.linkedin.LinkedinOpenIdConnect.request_access_token",
+        return_value={
+            "access_token": "mocked_li_token",
+            "id_token": "mock_id_token_xyz",
+        },
+    )
+    @patch(
         "social_core.backends.linkedin.LinkedinOpenIdConnect.validate_and_return_id_token"
     )
     @patch("social_core.backends.linkedin.LinkedinOpenIdConnect.user_data")
-    def test_linkedin_user_creation(self, mock_user_data, mock_validate_token):
+    def test_linkedin_user_creation(
+        self, mock_user_data, mock_validate_token, mock_li_token, mock_req_token
+    ):
         """Runs real pipeline. Creates new user and profile."""
         LINKEDIN_JWT_CLAIMS = {
             "sub": "auth_li_998877",
@@ -445,7 +496,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(new_user.auth_provider, "linkedin")
 
     @patch("social_core.backends.microsoft.MicrosoftOAuth2.user_data")
-    def test_microsoft_user_creation(self, mock_user_data):
+    def test_microsoft_user_creation(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "userPrincipalName": "microsoftuser@example.com",
@@ -480,7 +531,7 @@ class SocialLoginViewDBTests(APITestCase):
     # ------- Update -------
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_user_update(self, mock_user_data):
+    def test_google_user_update(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Authenticates existing active social user successfully."""
         mock_user_data.return_value = {
             "sub": "110169484474386276334",
@@ -539,7 +590,7 @@ class SocialLoginViewDBTests(APITestCase):
         AWS_STORAGE_BUCKET_NAME="my-mock-bucket",
         ALLOWED_HOSTS=["myapp.com", "localhost", "testserver"],
     )
-    def test_google_user_update_skipped(self, mock_user_data):
+    def test_google_user_update_skipped(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Authenticates existing active social user successfully."""
 
         # * First case where the image is local
@@ -616,7 +667,7 @@ class SocialLoginViewDBTests(APITestCase):
         )
 
     @patch("social_core.backends.amazon.AmazonOAuth2.user_data")
-    def test_amazon_user_update(self, mock_user_data):
+    def test_amazon_user_update(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
@@ -645,8 +696,14 @@ class SocialLoginViewDBTests(APITestCase):
         )
         self.assertEqual(self.existing_user.auth_provider, "amazon")
 
+    @patch(
+        "social_core.backends.facebook.FacebookOAuth2.request",
+        return_value=MagicMock(
+            status_code=200, json=lambda: {"access_token": "mocked_fb_token"}
+        ),
+    )
     @patch("social_core.backends.facebook.FacebookOAuth2.user_data")
-    def test_facebook_user_update(self, mock_user_data):
+    def test_facebook_user_update(self, mock_user_data, mock_fb_req, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
@@ -686,7 +743,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(self.existing_user.auth_provider, "facebook")
 
     @patch("social_core.backends.github.GithubOAuth2.user_data")
-    def test_github_user_update(self, mock_user_data):
+    def test_github_user_update(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
@@ -732,10 +789,19 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(self.existing_user.auth_provider, "github")
 
     @patch(
+        "social_core.backends.linkedin.LinkedinOpenIdConnect.request_access_token",
+        return_value={
+            "access_token": "mocked_li_token",
+            "id_token": "mock_id_token_xyz",
+        },
+    )
+    @patch(
         "social_core.backends.linkedin.LinkedinOpenIdConnect.validate_and_return_id_token"
     )
     @patch("social_core.backends.linkedin.LinkedinOpenIdConnect.user_data")
-    def test_linkedin_user_update(self, mock_user_data, mock_validate_token):
+    def test_linkedin_user_update(
+        self, mock_user_data, mock_validate_token, mock_li_token, mock_req_token
+    ):
         """Runs real pipeline. Creates new user and profile."""
         LINKEDIN_JWT_CLAIMS = {
             "sub": "auth_li_998877",
@@ -784,7 +850,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(self.existing_user.auth_provider, "linkedin")
 
     @patch("social_core.backends.microsoft.MicrosoftOAuth2.user_data")
-    def test_microsoft_user_update(self, mock_user_data):
+    def test_microsoft_user_update(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Creates new user and profile."""
         mock_user_data.return_value = {
             "userPrincipalName": "defaultuser@example.com",
@@ -819,7 +885,9 @@ class SocialLoginViewDBTests(APITestCase):
     # ------- Scenerios -------
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_login_existing_email_user_without_update_success(self, mock_user_data):
+    def test_login_existing_email_user_without_update_success(
+        self, mock_user_data, mock_req_token
+    ):
         """Runs real pipeline. Authenticates existing active social user successfully."""
 
         # * First case where google social user doesn't exist (grabs the user)
@@ -906,7 +974,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response1.data["user_id"], response2.data["user_id"])
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_login_creation_plus_update_success(self, mock_user_data):
+    def test_login_creation_plus_update_success(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Create, Authenticate and Update existing active social user successfully."""
 
         # * First case where google social user doesn't exist (create)
@@ -972,7 +1040,7 @@ class SocialLoginViewDBTests(APITestCase):
     # ==========================================
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_social_provider_auth_failed(self, mock_user_data):
+    def test_social_provider_auth_failed(self, mock_user_data, mock_req_token):
         """Test 401 response with generic message when AuthException is raised."""
         mock_user_data.side_effect = AuthException(None, "Invalid token signature")
 
@@ -990,7 +1058,7 @@ class SocialLoginViewDBTests(APITestCase):
     # ==========================================
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_social_login_staff_user_fails(self, mock_user_data):
+    def test_social_login_staff_user_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when user is staff."""
         self.existing_user.is_staff = True
         self.existing_user.save()
@@ -1010,7 +1078,7 @@ class SocialLoginViewDBTests(APITestCase):
         )
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_social_login_deactivated_user_fails(self, mock_user_data):
+    def test_social_login_deactivated_user_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when user is deactivated."""
         self.existing_user.is_active = False
         self.existing_user.save()
@@ -1029,7 +1097,7 @@ class SocialLoginViewDBTests(APITestCase):
         )
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_social_login_unverified_email_fails(self, mock_user_data):
+    def test_social_login_unverified_email_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when email is unverified."""
         self.existing_user.is_email_verified = False
         self.existing_user.save()
@@ -1051,7 +1119,7 @@ class SocialLoginViewDBTests(APITestCase):
     # ------- Impersonations -------
 
     @patch("social_core.backends.google.GoogleOAuth2.user_data")
-    def test_google_login_impersonation_fails(self, mock_user_data):
+    def test_google_login_impersonation_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
         mock_user_data.return_value = {
             "sub": "110169484474386276334",
@@ -1069,7 +1137,7 @@ class SocialLoginViewDBTests(APITestCase):
         )
 
     @patch("social_core.backends.facebook.FacebookOAuth2.user_data")
-    def test_facebook_login_impersonation_fails(self, mock_user_data):
+    def test_facebook_login_impersonation_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
         mock_user_data.return_value = {
             "first_name": "Jane",
@@ -1085,7 +1153,7 @@ class SocialLoginViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
 
     @patch("social_core.backends.github.GithubOAuth2.user_data")
-    def test_github_login_impersonation_fails(self, mock_user_data):
+    def test_github_login_impersonation_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
@@ -1117,11 +1185,18 @@ class SocialLoginViewDBTests(APITestCase):
         )
 
     @patch(
+        "social_core.backends.linkedin.LinkedinOpenIdConnect.request_access_token",
+        return_value={
+            "access_token": "mocked_li_token",
+            "id_token": "mock_id_token_xyz",
+        },
+    )
+    @patch(
         "social_core.backends.linkedin.LinkedinOpenIdConnect.validate_and_return_id_token"
     )
     @patch("social_core.backends.linkedin.LinkedinOpenIdConnect.user_data")
     def test_linkedin_login_impersonation_fails(
-        self, mock_user_data, mock_validate_token
+        self, mock_user_data, mock_validate_token, mock_li_token, mock_req_token
     ):
         """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
         LINKEDIN_JWT_CLAIMS = {
@@ -1155,7 +1230,7 @@ class SocialLoginViewDBTests(APITestCase):
         )
 
     @patch("social_core.backends.microsoft.MicrosoftOAuth2.user_data")
-    def test_microsoft_login_impersonation_fails(self, mock_user_data):
+    def test_microsoft_login_impersonation_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when user is impersonated."""
         mock_user_data.return_value = {
             "userPrincipalName": "defaultuser@example.com",
@@ -1177,7 +1252,7 @@ class SocialLoginViewDBTests(APITestCase):
     # ------- Linkups -------
 
     @patch("social_core.backends.amazon.AmazonOAuth2.user_data")
-    def test_amazon_login_linkup_fails(self, mock_user_data):
+    def test_amazon_login_linkup_fails(self, mock_user_data, mock_req_token):
         """Runs real pipeline. Custom pipeline raises 403 when user is linked up."""
         mock_user_data.return_value = {
             "email": "defaultuser@example.com",
@@ -1201,10 +1276,12 @@ class SocialLoginViewDBTests(APITestCase):
 
     @patch("auth_api.views.load_backend")
     @patch("auth_api.views.load_strategy")
-    def test_resolved_user_not_found(self, mock_load_strategy, mock_load_backend):
+    def test_resolved_user_not_found(
+        self, mock_load_strategy, mock_load_backend, mock_req_token
+    ):
         """Test 404 response when PSA returns None after auth."""
         mock_backend = MagicMock()
-        mock_backend.do_auth.return_value = None
+        mock_backend.auth_complete.return_value = None
         mock_load_backend.return_value = mock_backend
 
         response = self.client.post(
