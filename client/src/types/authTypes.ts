@@ -38,8 +38,6 @@ export interface PrevStateLoginForm {
 
 export type PrevStateTwoFALoginForm = SuccessResponse & ErrorResponse;
 
-export type PrevStateSocialLogin = SuccessResponse & ErrorResponse;
-
 //* Error Fields
 
 export interface LoginErrorFields {
@@ -58,8 +56,15 @@ export interface TwoFAErrorFields {
 
 export interface SocialLoginErrorFields {
   provider?: string;
-  social_auth_token?: string;
+  social_auth_code?: string;
+  redirect_uri?: string;
   general?: string;
+}
+
+export interface SocialErrorPageProps {
+  searchParams: Promise<{
+    error?: string;
+  }>;
 }
 
 //* Request
@@ -76,9 +81,18 @@ export interface TwoFALoginInput {
   otp: string | unknown | undefined;
 }
 
+export type SocialProvider =
+  | "google-oauth2"
+  | "facebook"
+  | "github"
+  | "microsoft-graph"
+  | "linkedin-openidconnect"
+  | "amazon";
+
 export interface SocialLoginInput {
-  provider: string;
-  social_auth_token: string;
+  provider: SocialProvider;
+  social_auth_code: string;
+  redirect_uri: string;
 }
 
 //* Response
@@ -115,13 +129,39 @@ export type SocialLoginAPIResponse = SessionResponseSuccess | ErrorResponse;
 
 export type LogoutAPIResponse = SuccessResponse | ErrorResponse;
 
-//* Recaptcha Enterprise
+//* Social Auth Intefaces
+
+export interface GoogleClientRequest {
+  requestCode: () => void;
+}
+
+export interface GoogleClientResponse {
+  code: string;
+  error?: string;
+  error_description?: string;
+}
+
+export interface GoogleOAuthConfig {
+  client_id: string;
+  scope: string;
+  ux_mode?: "popup" | "redirect";
+  state?: string;
+  select_account?: boolean;
+  //* For redirect
+  redirect_uri?: string;
+  //* For popup
+  /* eslint-disable no-unused-vars */
+  callback?: (response: GoogleClientResponse) => void;
+  /* eslint-enable no-unused-vars */
+}
+
+//* Global types
 
 /* eslint-disable no-unused-vars */
 declare global {
   interface Window {
-    onloadCallback?: () => void;
-    grecaptcha: {
+    onloadRecaptchaCallback?: () => void;
+    grecaptcha?: {
       enterprise: {
         // v3: Prepares the library to execute programmatic actions
         ready: (callback: () => void | Promise<void>) => void;
@@ -144,17 +184,24 @@ declare global {
             "expired-callback"?: () => void;
             "error-callback"?: () => void;
           },
-        ) => number; // Returns a unique numeric Widget ID
+        ) => number;
 
         // v2: Resets a specific widget via its unique numeric ID
         reset: (widgetId?: number) => void;
+      };
+    };
+    google?: {
+      accounts: {
+        oauth2: {
+          initCodeClient: (config: GoogleOAuthConfig) => GoogleClientRequest;
+        };
       };
     };
   }
 }
 /* eslint-enable no-unused-vars */
 
-
+//* Others
 
 export interface SignUpPasswordErrorResponse {
   short?: string;

@@ -7,23 +7,19 @@ import {
   getPreAuthTokenFromSession,
   deletePreAuthCookie,
 } from "@/libs/cookie";
-import { login, twoFALogin, socialLogin, logout } from "@/libs/api";
+import { login, twoFALogin, logout } from "@/libs/api";
 import {
   PrevStateLoginForm,
   LoginErrorFields,
   TwoFAErrorFields,
-  SocialLoginErrorFields,
   PrevStateTwoFALoginForm,
-  PrevStateSocialLogin,
   LogoutAPIResponse,
 } from "@/types/authTypes";
 import {
   loginInputError,
   twoFAInputError,
-  socialLoginInputError,
   loginServerError,
   twoFAServerError,
-  socialLoginServerError
 } from "@/libs/errors";
 
 export async function loginAction(
@@ -151,7 +147,7 @@ export async function twoFALoginAction(
   prevState: PrevStateTwoFALoginForm,
   formData: FormData,
 ): Promise<PrevStateTwoFALoginForm> {
-  const pre_auth_token = await getPreAuthTokenFromSession() || "";
+  const pre_auth_token = (await getPreAuthTokenFromSession()) || "";
   const otp = formData.get("otp")?.toString().trim() || "";
 
   const data = {
@@ -171,7 +167,8 @@ export async function twoFALoginAction(
   try {
     const response = await twoFALogin(data);
     if (response && "error" in response && response.error) {
-      const TwoFAErrorResponse: TwoFAErrorFields = await twoFAServerError(response);
+      const TwoFAErrorResponse: TwoFAErrorFields =
+        await twoFAServerError(response);
       return {
         success: "",
         error: TwoFAErrorResponse,
@@ -193,71 +190,6 @@ export async function twoFALoginAction(
     ) {
       await setSessionCookie(response);
       await deletePreAuthCookie();
-      return {
-        success: "Login Successful.",
-        error: {},
-      };
-    } else {
-      return {
-        success: "",
-        error: {
-          general: "An error occurred during login.",
-        },
-      };
-    }
-  } catch (error) {
-    console.error(error);
-    return {
-      success: "",
-      error: {
-        general: "An error occurred during login.",
-      },
-    };
-  }
-}
-
-export async function socialLoginAction(
-  provider: string,
-  social_auth_token: string,
-): Promise<PrevStateSocialLogin> {
-  const data = {
-    provider: provider,
-    social_auth_token: social_auth_token,
-  };
-
-  const localErrors: SocialLoginErrorFields = socialLoginInputError(data);
-
-  if (Object.keys(localErrors).length > 0) {
-    return {
-      success: "",
-      error: localErrors,
-    };
-  }
-
-  try {
-    const response = await socialLogin(data);
-    if (response && "error" in response && response.error) {
-      const SocialLoginErrorResponse: SocialLoginErrorFields = await socialLoginServerError(response);
-      return {
-        success: "",
-        error: SocialLoginErrorResponse,
-      };
-    } else if (
-      typeof response === "object" &&
-      "sessionid" in response &&
-      response.sessionid &&
-      "session_expiry" in response &&
-      response.session_expiry &&
-      "user_id" in response &&
-      response.user_id &&
-      "user_role" in response &&
-      response.user_role &&
-      "csrf_token" in response &&
-      response.csrf_token &&
-      "csrf_token_expiry" in response &&
-      response.csrf_token_expiry
-    ) {
-      await setSessionCookie(response);
       return {
         success: "Login Successful.",
         error: {},

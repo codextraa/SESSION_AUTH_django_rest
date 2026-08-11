@@ -1,3 +1,4 @@
+import { API_URL } from "@/routes";
 import { ApiClient } from "./apiClient";
 import {
   LoginInput,
@@ -12,11 +13,6 @@ import {
   LogoutAPIResponse,
 } from "@/types/authTypes";
 
-const HTTPS = process.env.HTTPS === "true";
-
-const API_URL = HTTPS
-  ? process.env.API_BASE_HTTPS_URL
-  : process.env.API_BASE_URL;
 const apiClient = new ApiClient(API_URL || "");
 
 export const getCSRFToken = async (): Promise<CSRFTokenResponse> => {
