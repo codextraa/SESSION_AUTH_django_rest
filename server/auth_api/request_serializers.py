@@ -99,14 +99,26 @@ class SocialLoginRequestSerializer(serializers.Serializer):  # pylint: disable=W
         },
     )
 
-    social_auth_token = serializers.CharField(
+    social_auth_code = serializers.CharField(
         required=True,
         allow_null=False,
         allow_blank=False,
-        help_text="The access token or ID token received from Auth.js",
+        help_text="Authorization code received from the SDK client",
         error_messages={
-            "required": "Token is required.",
-            "blank": "Token is required.",
-            "null": "Token is required.",
+            "required": "Code is required.",
+            "blank": "Code is required.",
+            "null": "Code is required.",
+        },
+    )
+
+    redirect_uri = serializers.URLField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        help_text="The exact redirect_uri used during the authorization request",
+        error_messages={
+            "required": "Redirect URI is required.",
+            "blank": "Redirect URI is required.",
+            "null": "Redirect URI is required.",
         },
     )

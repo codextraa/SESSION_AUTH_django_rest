@@ -4,7 +4,7 @@ import Form from "next/form";
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { twoFALoginAction } from "@/actions/authActions";
-import { PrevStateTwoFALoginForm } from "@/types/types";
+import { PrevStateTwoFALoginForm } from "@/types/authTypes";
 import {
   OTPFormSubmitButton,
   OTPBackToLoginButton,
