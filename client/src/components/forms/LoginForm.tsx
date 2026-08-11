@@ -10,14 +10,17 @@ import {
   useCallback,
 } from "react";
 import { loginAction } from "@/actions/authActions";
-import { PrevStateLoginForm } from "@/types/types";
+import { PrevStateLoginForm } from "@/types/authTypes";
 import { useRouter } from "next/navigation";
 import {
   FormButton,
   EyeButton,
   GoogleLoginButton,
   FacebookLoginButton,
-  GitHubLoginButton,
+  GithubLoginButton,
+  MicrosoftLoginButton,
+  LinkedinLoginButton,
+  AmazonLoginButton,
 } from "@/components/buttons/button";
 import { DEFAULT_LOGIN_REDIRECT } from "@/route";
 
@@ -264,8 +267,8 @@ export default function LoginForm() {
                 autoComplete="username"
                 defaultValue={
                   state &&
-                  "email_or_username" in state &&
-                  state.email_or_username
+                    "email_or_username" in state &&
+                    state.email_or_username
                     ? (state.email_or_username as string)
                     : ""
                 }
@@ -347,7 +350,10 @@ export default function LoginForm() {
             />
             <GoogleLoginButton />
             <FacebookLoginButton />
-            <GitHubLoginButton />
+            <GithubLoginButton />
+            <MicrosoftLoginButton />
+            <LinkedinLoginButton />
+            <AmazonLoginButton />
           </div>
           <div className="w-full text-center font-['Merriweather'] text-[15px] text-[#000000]">
             Want to create an account?{" "}

@@ -1,3 +1,5 @@
+//* Generics
+
 export interface SuccessResponse {
   success: string | undefined;
 }
@@ -5,6 +7,8 @@ export interface SuccessResponse {
 export interface ErrorResponse {
   error: string | object | undefined;
 }
+
+//* Cookies
 
 export interface CSRFTokenData {
   csrf_token: string;
@@ -21,6 +25,63 @@ export interface SessionData {
 export interface PreAuthData {
   pre_auth_token: string;
 }
+
+//* State
+
+export interface PrevStateLoginForm {
+  success: string;
+  pre_auth_token: boolean;
+  error: object;
+  email_or_username: string;
+  password: string;
+}
+
+export type PrevStateTwoFALoginForm = SuccessResponse & ErrorResponse;
+
+export type PrevStateSocialLogin = SuccessResponse & ErrorResponse;
+
+//* Error Fields
+
+export interface LoginErrorFields {
+  email_or_username?: string;
+  password?: string;
+  recaptcha_version?: string;
+  recaptcha_token?: string;
+  general?: string;
+}
+
+export interface TwoFAErrorFields {
+  pre_auth_token?: string;
+  otp?: string;
+  general?: string;
+}
+
+export interface SocialLoginErrorFields {
+  provider?: string;
+  social_auth_token?: string;
+  general?: string;
+}
+
+//* Request
+
+export interface LoginInput {
+  email_or_username: string | undefined;
+  password: string | undefined;
+  recaptcha_token: string | undefined;
+  recaptcha_version: string | undefined;
+}
+
+export interface TwoFALoginInput {
+  pre_auth_token: string | unknown | undefined;
+  otp: string | unknown | undefined;
+}
+
+export interface SocialLoginInput {
+  provider: string;
+  social_auth_token: string;
+}
+
+//* Response
 
 export interface CSRFTokenResponseSuccess {
   csrf_token: string | undefined;
@@ -48,48 +109,13 @@ export type SessionResponse =
   | PreAuthResponseSuccess
   | ErrorResponse;
 
-export interface LoginInput {
-  email_or_username: string | undefined;
-  password: string | undefined;
-  recaptcha_token: string | undefined;
-  recaptcha_version: string | undefined;
-}
-
-export interface LoginErrorFields {
-  email_or_username?: string;
-  password?: string;
-  recaptcha_version?: string;
-  recaptcha_token?: string;
-  general?: string;
-}
-
-export interface PrevStateLoginForm {
-  success: string;
-  pre_auth_token: boolean;
-  error: object;
-  email_or_username: string;
-  password: string;
-}
-
-export interface TwoFAErrorFields {
-  pre_auth_token?: string;
-  otp?: string;
-  general?: string;
-}
-
-export interface PrevStateTwoFALoginForm {
-  success: string;
-  error: object;
-}
-
-export interface TwoFALoginInput {
-  pre_auth_token: string | unknown | undefined;
-  otp: string | unknown | undefined;
-}
-
 export type TwoFASessionAPIResponse = SessionResponseSuccess | ErrorResponse;
 
+export type SocialLoginAPIResponse = SessionResponseSuccess | ErrorResponse;
+
 export type LogoutAPIResponse = SuccessResponse | ErrorResponse;
+
+//* Recaptcha Enterprise
 
 /* eslint-disable no-unused-vars */
 declare global {
@@ -127,6 +153,8 @@ declare global {
   }
 }
 /* eslint-enable no-unused-vars */
+
+
 
 export interface SignUpPasswordErrorResponse {
   short?: string;

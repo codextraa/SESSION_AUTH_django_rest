@@ -8,7 +8,6 @@ export default function OTPVerificationPage() {
         <h1 className="font-['Merriweather'] font-bold text-[30px] leading-[38px] text-black text-center mb-10">
           OTP Verification
         </h1>
-
         <OTPVerificationForm />
       </div>
     </main>

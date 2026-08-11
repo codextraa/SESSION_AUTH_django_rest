@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { authRoute, DEFAULT_LOGIN_REDIRECT } from "@/route";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -20,59 +20,66 @@ export default function Navbar({ initialSession, initialRole }: NavbarProps) {
   const [session, setSession] = useState<string | null>(initialSession);
   const [role, setRole] = useState<string | null>(initialRole);
   const [alert, setAlert] = useState<boolean>(false);
+  const [erroFlag, setErrorFlag] = useState<boolean>(false);
   const [responseMessage, setResponseMessage] = useState<string>("");
+
+  const logoutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setSession(initialSession);
     setRole(initialRole);
   }, [initialSession, initialRole]);
 
+  // Clean up timer on unmount
+  useEffect(() => {
+    return () => {
+      if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
+    };
+  }, []);
+
   if (pathname.startsWith(authRoute)) {
     return null;
   }
-  // 1. First, define a ref at the top of your component to store the timer ID safely
-  // const logoutTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleLogout = async () => {
     const response = await logoutAction();
+
     if (
       response &&
       "error" in response &&
       response.error &&
       typeof response.error === "string"
     ) {
-      setAlert(true);
       setResponseMessage(response.error);
+      setErrorFlag(true);
     } else if (
       response &&
       "success" in response &&
       response.success &&
       typeof response.success === "string"
     ) {
-      setAlert(true);
       setResponseMessage(response.success);
     } else {
-      setAlert(true);
       setResponseMessage("Logout failed");
     }
 
-    // logoutTimeoutRef.current = setTimeout(() => {
-    //   setAlert(false);
-    //   setResponseMessage(""); // Optional: clear message text too
-    // }, 5000);
+    // Trigger alert visibility
+    setAlert(true);
 
-    router.push(DEFAULT_LOGIN_REDIRECT);
+    // Auto-dismiss alert and redirect after a short delay
+    logoutTimeoutRef.current = setTimeout(() => {
+      setAlert(false);
+      if (erroFlag) setErrorFlag(false);
+      // Delay navigation slightly so the exit animation can complete, or redirect immediately
+      setTimeout(() => {
+        router.push(DEFAULT_LOGIN_REDIRECT);
+      }, 300);
+    }, 2500);
   };
-
-  // useEffect(() => {
-  //   return () => {
-  //     if (logoutTimeoutRef.current) clearTimeout(logoutTimeoutRef.current);
-  //   };
-  // }, []);
 
   return (
     <nav className="w-full min-h-[31px] py-4 px-6 pt-[15px] md:px-[80px] flex flex-row items-center justify-between px-6 z-[100]">
-      <UpdateAlert alert={alert} message={responseMessage} />
+      <UpdateAlert alert={alert} message={responseMessage} isError={erroFlag} />
       <Link
         href="/"
         className="w-[48px] h-[25px] font-['Merriweather'] font-bold text-[20px] leading-[25px] text-center text-black"
