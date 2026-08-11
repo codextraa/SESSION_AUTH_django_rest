@@ -2,17 +2,23 @@ import { getSessionIdFromSession, getCSRFTokenFromSession } from "./cookie";
 
 const HTTPS = process.env.HTTPS === "true";
 
+// ----------------------------------------------------------------------------
+//* API Client - Handles API requests (a custom implementation of axios)
+// ----------------------------------------------------------------------------
+
 export class ApiClient {
   private baseURL: string;
   private lastRequestTimes: Map<string, number>; // Track last request times per endpoint
   private THROTTLE_TIME: number; // 2 seconds
 
+  //* Constructor Base URL
   constructor(baseURL: string) {
     this.baseURL = baseURL;
     this.lastRequestTimes = new Map<string, number>(); // Track last request times per endpoint
     this.THROTTLE_TIME = 2000; // 2 seconds
   }
 
+  //* Throttling (limit requests to 1 per 2 seconds)
   async throttle(endpoint: string): Promise<void> {
     const now = Date.now();
     const lastRequestTime = this.lastRequestTimes.get(endpoint) || 0;
@@ -30,7 +36,8 @@ export class ApiClient {
     this.lastRequestTimes.set(endpoint, Date.now());
   }
 
-  async handleErrors(response: Response): Promise<unknown> {
+  //* Parse response (success or error -> returns json)
+  async parseResponse(response: Response): Promise<unknown> {
     const contentType = response.headers.get("Content-Type") || "";
     // const clonedResponse = response.clone();
 
@@ -79,6 +86,7 @@ export class ApiClient {
     throw new Error("Unexpected error occurred.");
   }
 
+  //* Request to backend (add csrftoken, cookies and headers)
   async request<T>(
     endpoint: string,
     method: string,
@@ -129,7 +137,7 @@ export class ApiClient {
 
     try {
       const response = await fetch(url, options);
-      return (await this.handleErrors(response)) as T;
+      return (await this.parseResponse(response)) as T;
     } catch (error) {
       console.error("Fetch error:", error);
       throw error;

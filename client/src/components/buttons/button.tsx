@@ -79,6 +79,7 @@ export function FormButton({ disabled, mode }: FormButtonProps) {
   );
 }
 
+//TODO -> disable flag is missing from social buttons
 interface SocialButtonProps {
   onClick?: () => void;
   className?: string;

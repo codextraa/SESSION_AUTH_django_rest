@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { authRoute, DEFAULT_LOGIN_REDIRECT } from "@/route";
+import { authRoute, DEFAULT_LOGIN_REDIRECT } from "@/routes";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import UpdateAlert from "@/components/alerts/UpdateAlert";
