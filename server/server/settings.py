@@ -147,6 +147,12 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Amazon settings
+
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_REGION_NAME = os.getenv("AWS_REGION_NAME")
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
@@ -161,10 +167,8 @@ if DJANGO_ENV == "development":
     MEDIA_ROOT = "/app/media"
 else:
     STATIC_ROOT = "/home/django/app/static"
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_S3_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = AWS_REGION_NAME
     AWS_S3_ADDRESSING_STYLE = "virtual"
     AWS_S3_SIGNATURE_VERSION = "s3v4"
 
@@ -429,14 +433,28 @@ SESSION_COOKIE_SECURE = True  # Secure session cookies
 
 # Email Settings
 
+# Console
+
 # EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER")
-EMAIL_USE_TLS = True
-EMAIL_HOST = "smtp.gmail.com"
-EMAIL_PORT = 587
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+# SMTP
+
+# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER")
+# EMAIL_USE_TLS = True
+# EMAIL_HOST = "smtp.gmail.com"
+# EMAIL_PORT = 587
+# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+# AWS SES
+
+EMAIL_BACKEND = "django_ses.SESBackend"
+AWS_SES_REGION_NAME = os.getenv("AWS_REGION_NAME", "ap-south-1")
+AWS_SES_REGION_ENDPOINT = f"email.{AWS_SES_REGION_NAME}.amazonaws.com"
+DEFAULT_FROM_EMAIL = "no-reply@codextra.website"
+SERVER_EMAIL = "no-reply@codextra.website"
+
 
 # Security Settings
 MAX_LOGIN_FAILURE_LIMIT = 5
