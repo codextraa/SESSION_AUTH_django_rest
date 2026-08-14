@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.core.exceptions import ValidationError
 from core_db.models import Notification
 
 User = get_user_model()
@@ -73,7 +74,7 @@ class NotificationModelTests(TestCase):
 
     def test_notification_without_user_raises_error(self):
         """Test that creating a Notification without a user raises IntegrityError."""
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(ValidationError):
             Notification.objects.create(
                 user=None,
                 title="No User Test",
@@ -82,7 +83,7 @@ class NotificationModelTests(TestCase):
 
     def test_notification_without_title_raises_error(self):
         """Test that creating a Notification with title=None raises IntegrityError."""
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(ValidationError):
             Notification.objects.create(
                 user=self.user,
                 title=None,
@@ -91,12 +92,25 @@ class NotificationModelTests(TestCase):
 
     def test_notification_without_body_raises_error(self):
         """Test that creating a Notification with body=None raises IntegrityError."""
-        with self.assertRaises(IntegrityError):
+        with self.assertRaises(ValidationError):
             Notification.objects.create(
                 user=self.user,
                 title="Title without body",
                 body=None,
             )
+
+    def test_notification_blank_title_and_body_validation(self):
+        """Test that blank title or body raises ValidationError during full_clean."""
+        notification = Notification(
+            user=self.user,
+            title="",
+            body="",
+        )
+        with self.assertRaises(ValidationError) as cm:
+            notification.full_clean()
+
+        self.assertIn("title", cm.exception.message_dict)
+        self.assertIn("body", cm.exception.message_dict)
 
     def test_mark_notification_as_read(self):
         """Test updating the is_read status to True."""
