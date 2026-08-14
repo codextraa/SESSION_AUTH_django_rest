@@ -12,7 +12,7 @@ import {
   publicRoutes,
   apiRoute,
   authRoute,
-} from "./route";
+} from "./routes";
 
 export async function proxy(req: NextRequest) {
   console.warn("Middleware triggered");

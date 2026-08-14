@@ -9,9 +9,10 @@ import {
   useEffect,
   useCallback,
 } from "react";
+import { useRouter } from "next/navigation";
+import { socialAuthClient } from "@/libs/authClient";
 import { loginAction } from "@/actions/authActions";
 import { PrevStateLoginForm } from "@/types/authTypes";
-import { useRouter } from "next/navigation";
 import {
   FormButton,
   EyeButton,
@@ -22,7 +23,7 @@ import {
   LinkedinLoginButton,
   AmazonLoginButton,
 } from "@/components/buttons/button";
-import { DEFAULT_LOGIN_REDIRECT } from "@/route";
+import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
 const V3_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY_V3 || "";
 const V2_SITE_KEY = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY_V2 || "";
@@ -35,7 +36,11 @@ const initialState: PrevStateLoginForm = {
   password: "",
 };
 
-export default function LoginForm() {
+export default function LoginForm({
+  initialSocialError = "",
+}: {
+  initialSocialError?: string;
+}) {
   const [state, formAction, isPending] = useActionState(
     loginAction,
     initialState,
@@ -52,9 +57,20 @@ export default function LoginForm() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const [isLoginSuccessful, setIsLoginSuccessful] = useState<boolean>(false);
+  const [socialError, setSocialError] = useState<string>(initialSocialError);
 
   const togglePasswordVisibility = () => {
     setShowPassword((prev) => !prev);
+  };
+
+  // SMART BACKGROUND TELEMETRY: Fires only on valid activity windows
+  const handleUserActivity = () => {
+    if (currentVersion !== "v3") return;
+    const now = Date.now();
+    if (now - lastFetchTimeRef.current > 90000) {
+      // 1.5-minute cache validation
+      executeV3Telemetry();
+    }
   };
 
   const removeRecaptchaScripts = () => {
@@ -66,16 +82,13 @@ export default function LoginForm() {
   };
 
   const executeV3Telemetry = useCallback(() => {
-    if (
-      !V3_SITE_KEY ||
-      currentVersion !== "v3" ||
-      !window.grecaptcha?.enterprise
-    )
-      return;
+    const grecaptcha = window.grecaptcha?.enterprise;
 
-    window.grecaptcha.enterprise.ready(async () => {
+    if (!V3_SITE_KEY || currentVersion !== "v3" || !grecaptcha) return;
+
+    grecaptcha.ready(async () => {
       try {
-        const token = await window.grecaptcha.enterprise.execute(V3_SITE_KEY, {
+        const token = await grecaptcha.execute(V3_SITE_KEY, {
           action: "login",
         });
         setRecaptchaToken(token);
@@ -85,6 +98,26 @@ export default function LoginForm() {
       }
     });
   }, [currentVersion]);
+
+  useEffect(() => {
+    if (isPending) {
+      setSocialError("");
+    }
+  }, [isPending]);
+
+  useEffect(() => {
+    if (initialSocialError) {
+      setSocialError(initialSocialError);
+    }
+  }, [initialSocialError]);
+
+  // Remove the error search params by cleaning the URL
+  useEffect(() => {
+    if (initialSocialError && typeof window !== "undefined") {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, cleanUrl);
+    }
+  }, [initialSocialError]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout>;
@@ -114,16 +147,6 @@ export default function LoginForm() {
       if (timer) clearTimeout(timer);
     };
   }, [state, router]);
-
-  // SMART BACKGROUND TELEMETRY: Fires only on valid activity windows
-  const handleUserActivity = () => {
-    if (currentVersion !== "v3") return;
-    const now = Date.now();
-    if (now - lastFetchTimeRef.current > 90000) {
-      // 1.5-minute cache validation
-      executeV3Telemetry();
-    }
-  };
 
   useEffect(() => {
     if (state && "error" in state && state.error) {
@@ -155,9 +178,8 @@ export default function LoginForm() {
     if (isLoginSuccessful) {
       removeRecaptchaScripts();
       v2WidgetIdRef.current = null;
-      // @ts-expect-error - Clear global reCAPTCHA object on successful authentication
       window.grecaptcha = undefined;
-      window.onloadCallback = undefined;
+      window.onloadRecaptchaCallback = undefined;
       return;
     }
 
@@ -181,7 +203,7 @@ export default function LoginForm() {
     if (currentVersion === "v2" && V2_SITE_KEY) {
       removeRecaptchaScripts();
 
-      window.onloadCallback = () => {
+      window.onloadRecaptchaCallback = () => {
         const container = document.getElementById("recaptcha-container");
         if (!container || v2WidgetIdRef.current !== null) return;
         container.innerHTML = "";
@@ -216,7 +238,7 @@ export default function LoginForm() {
       };
 
       const script = document.createElement("script");
-      script.src = `https://www.google.com/recaptcha/enterprise.js?onload=onloadCallback&render=explicit`;
+      script.src = `https://www.google.com/recaptcha/enterprise.js?onload=onloadRecaptchaCallback&render=explicit`;
       script.async = true;
       script.defer = true;
       document.head.appendChild(script);
@@ -250,6 +272,13 @@ export default function LoginForm() {
               </span>
             </div>
           )}
+        {socialError && (
+          <div className="w-full h-[40px] box-border bg-[rgba(255,5,5,0.15)] border-2 border-[#E30202] rounded-[93px] flex items-center justify-center px-4">
+            <span className="font-['Merriweather'] font-normal text-[16px] leading-[20px] text-center text-[#D80E0E]">
+              {socialError}
+            </span>
+          </div>
+        )}
         {state && "success" in state && state.success && (
           <div className="w-full h-[40px] box-border bg-[rgba(63,221,0,0.15)] border-2 border-[#368C04] rounded-[93px] flex items-center justify-center px-4">
             <span className="font-['Merriweather'] font-normal text-[16px] leading-[20px] text-center text-[#368C04]">
@@ -267,8 +296,8 @@ export default function LoginForm() {
                 autoComplete="username"
                 defaultValue={
                   state &&
-                    "email_or_username" in state &&
-                    state.email_or_username
+                  "email_or_username" in state &&
+                  state.email_or_username
                     ? (state.email_or_username as string)
                     : ""
                 }
@@ -348,7 +377,9 @@ export default function LoginForm() {
               }
               mode="login"
             />
-            <GoogleLoginButton />
+            <GoogleLoginButton
+              onClick={() => socialAuthClient.getToken("google-oauth2")}
+            />
             <FacebookLoginButton />
             <GithubLoginButton />
             <MicrosoftLoginButton />

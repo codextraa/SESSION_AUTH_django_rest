@@ -176,7 +176,7 @@ export default function SignUpForm() {
 
   useEffect(() => {
     return () => {
-      window.onloadCallback = () => { };
+      window.onloadCallback = () => {};
     };
   }, []);
 

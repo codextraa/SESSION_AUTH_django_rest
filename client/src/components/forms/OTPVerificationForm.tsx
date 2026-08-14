@@ -10,7 +10,7 @@ import {
   OTPBackToLoginButton,
   OTPResendButton,
 } from "@/components/buttons/button";
-import { DEFAULT_LOGIN_REDIRECT } from "@/route";
+import { DEFAULT_LOGIN_REDIRECT } from "@/routes";
 
 const initialState: PrevStateTwoFALoginForm = {
   success: "",

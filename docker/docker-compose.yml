@@ -22,9 +22,31 @@ services:
     command: ["chmod +x /app/run.sh && /app/run.sh"]
     volumes:
       - ../server:/app
+    environment:
+      - SERVICE_TYPE=server-api
     depends_on:
       session-djrest-redis:
         condition: service_healthy
+    networks:
+      - web-app-network
+
+  session-djrest-server-worker:
+    container_name: session-djrest-server-worker
+    image: session-djrest-server:Python-3.14-slim-D
+    secrets:
+      - infisical_token
+      - .infisical.json
+    entrypoint: sh -c 
+    command: ["chmod +x /app/run.sh && /app/run.sh"]
+    volumes:
+      - ../server:/app
+    environment:
+      - SERVICE_TYPE=server-workers
+    depends_on:
+      session-djrest-redis:
+        condition: service_healthy
+      session-djrest-server:
+        condition: service_started
     networks:
       - web-app-network
 

@@ -1,7 +1,7 @@
 import {
   LoginErrorFields,
   TwoFAErrorFields,
-  SocialLoginErrorFields
+  SocialLoginErrorFields,
 } from "@/types/authTypes";
 
 const formatErrorMsg = (msg: string): string =>
@@ -9,7 +9,9 @@ const formatErrorMsg = (msg: string): string =>
 
 //* Input Errors
 
-export const loginInputError = (formInput: LoginErrorFields): LoginErrorFields => {
+export const loginInputError = (
+  formInput: LoginErrorFields,
+): LoginErrorFields => {
   const localErrors: LoginErrorFields = {};
 
   if (!formInput.email_or_username?.trim()) {
@@ -29,9 +31,11 @@ export const loginInputError = (formInput: LoginErrorFields): LoginErrorFields =
   }
 
   return localErrors;
-}
+};
 
-export const twoFAInputError = (formInput: TwoFAErrorFields): TwoFAErrorFields => {
+export const twoFAInputError = (
+  formInput: TwoFAErrorFields,
+): TwoFAErrorFields => {
   const localErrors: TwoFAErrorFields = {};
 
   if (!formInput.pre_auth_token) {
@@ -45,21 +49,7 @@ export const twoFAInputError = (formInput: TwoFAErrorFields): TwoFAErrorFields =
   }
 
   return localErrors;
-}
-
-export const socialLoginInputError = (formInput: SocialLoginErrorFields): SocialLoginErrorFields => {
-  const localErrors: SocialLoginErrorFields = {};
-
-  if (!formInput.provider) {
-    localErrors.provider = "Provider is required.";
-  }
-
-  if (!formInput.social_auth_token) {
-    localErrors.social_auth_token = "Social auth token is required.";
-  }
-
-  return localErrors;
-}
+};
 
 //* Server Errors
 
@@ -75,7 +65,9 @@ export const loginServerError = (response: object): LoginErrorFields => {
     const errorMessages: LoginErrorFields = {};
 
     if (backendErrors.email_or_username?.[0]) {
-      errorMessages.email_or_username = formatErrorMsg(backendErrors.email_or_username[0]);
+      errorMessages.email_or_username = formatErrorMsg(
+        backendErrors.email_or_username[0],
+      );
     }
 
     if (backendErrors.password?.[0]) {
@@ -83,11 +75,15 @@ export const loginServerError = (response: object): LoginErrorFields => {
     }
 
     if (backendErrors.recaptcha_token?.[0]) {
-      errorMessages.recaptcha_token = formatErrorMsg(backendErrors.recaptcha_token[0]);
+      errorMessages.recaptcha_token = formatErrorMsg(
+        backendErrors.recaptcha_token[0],
+      );
     }
 
     if (backendErrors.recaptcha_version?.[0]) {
-      errorMessages.recaptcha_version = formatErrorMsg(backendErrors.recaptcha_version[0]);
+      errorMessages.recaptcha_version = formatErrorMsg(
+        backendErrors.recaptcha_version[0],
+      );
     }
 
     return errorMessages;
@@ -107,7 +103,9 @@ export const loginServerError = (response: object): LoginErrorFields => {
   };
 };
 
-export const twoFAServerError = async (response: object): Promise<TwoFAErrorFields> => {
+export const twoFAServerError = async (
+  response: object,
+): Promise<TwoFAErrorFields> => {
   if (
     typeof response === "object" &&
     "error" in response &&
@@ -119,7 +117,9 @@ export const twoFAServerError = async (response: object): Promise<TwoFAErrorFiel
     const errorMessages: TwoFAErrorFields = {};
 
     if (backendErrors.pre_auth_token?.[0]) {
-      errorMessages.pre_auth_token = formatErrorMsg(backendErrors.pre_auth_token[0]);
+      errorMessages.pre_auth_token = formatErrorMsg(
+        backendErrors.pre_auth_token[0],
+      );
     }
 
     if (backendErrors.otp?.[0]) {
@@ -159,8 +159,16 @@ export const socialLoginServerError = async (
       errorMessages.provider = formatErrorMsg(backendErrors.provider[0]);
     }
 
-    if (backendErrors.social_auth_token?.[0]) {
-      errorMessages.social_auth_token = formatErrorMsg(backendErrors.social_auth_token[0]);
+    if (backendErrors.social_auth_code?.[0]) {
+      errorMessages.social_auth_code = formatErrorMsg(
+        backendErrors.social_auth_token[0],
+      );
+    }
+
+    if (backendErrors.redirect_uri?.[0]) {
+      errorMessages.redirect_uri = formatErrorMsg(
+        backendErrors.social_auth_token[0],
+      );
     }
 
     return errorMessages;
