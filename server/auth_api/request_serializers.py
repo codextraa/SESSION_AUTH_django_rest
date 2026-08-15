@@ -122,3 +122,21 @@ class SocialLoginRequestSerializer(serializers.Serializer):  # pylint: disable=W
             "null": "Redirect URI is required.",
         },
     )
+
+
+class FCMTokenRequestSerializer(serializers.Serializer):  # pylint: disable=W0223
+    """
+    Handles FCM Token credentials.
+    """
+
+    fcm_token = serializers.CharField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        help_text="The FCM token to be used in subsequent requests.",
+        error_messages={
+            "required": "Token is required.",
+            "blank": "Token is required.",
+            "null": "Token is required.",
+        },
+    )

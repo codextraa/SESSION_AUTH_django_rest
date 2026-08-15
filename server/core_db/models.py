@@ -118,3 +118,47 @@ class User(AbstractBaseUser, PermissionsMixin):
     def __str__(self):
         """Return Email"""
         return f"{self.email}"
+
+
+class Notification(models.Model):
+    """Notification Model"""
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="notifications"
+    )
+    title = models.CharField(max_length=255)
+    body = models.TextField()
+    data = models.JSONField(default=dict, blank=True)
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def save(self, *args, **kwargs):
+        """Running Validators before saving"""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.title}"
+
+
+class FCMToken(models.Model):
+    """Firebase Cloud Messaging Token Model"""
+
+    class Meta:
+        ordering = ["-updated_at"]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="fcm_tokens")
+    token = models.CharField(max_length=512, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def save(self, *args, **kwargs):
+        """Running Validators before saving"""
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user.username} - {self.token[:15]}..."
