@@ -32,12 +32,14 @@ from server.schema_serializers import (
 )
 from .throttles import OTPCooldownThrottle, TwoFACooldownThrottle
 from .utils import get_user_role, create_otp, verify_otp
+from .serializers import FCMTokenSerializer
 from .validation_serializers import ValidUserSerializer
 from .request_serializers import (
     RecaptchaRequestSerializer,
     LoginRequestSerializer,
     TwoFARequestSerializer,
     SocialLoginRequestSerializer,
+    FCMTokenRequestSerializer,
 )
 from .response_serializers import (
     CSRFTokenResponseSerializer,
@@ -1153,9 +1155,9 @@ class LogoutView(APIView):
                 response=SuccessResponseSerializer,
                 description="Success - Successfully logged out",
             ),
-            status.HTTP_401_UNAUTHORIZED: OpenApiResponse(
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(
                 response=ErrorResponseSerializer,
-                description="Unauthorized - Missing or invalid session/credentials",
+                description="Forbidden - Missing or invalid session/credentials",
             ),
             status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
                 response=ErrorResponseSerializer,
@@ -1170,9 +1172,9 @@ class LogoutView(APIView):
                 value={"success": "Logged out successfully"},
             ),
             OpenApiExample(
-                name="Unauthorized Example",
+                name="Logout Failure Example",
                 response_only=True,
-                status_codes=["401"],
+                status_codes=["403"],
                 value={"error": "Authentication credentials were not provided."},
             ),
             OpenApiExample(
@@ -1202,6 +1204,99 @@ class LogoutView(APIView):
             )
         except Exception as e:  # pylint: disable=W0718
             logger.error("Logout failed: %s", str(e))
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class FCMTokenView(APIView):
+    """FCM Token View."""
+
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [ViewRenderer]
+
+    @extend_schema(
+        summary="Register FCM Token",
+        description="Register a FCM token in the database.",
+        request=FCMTokenRequestSerializer,
+        tags=["Authentication"],
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                response=SuccessResponseSerializer,
+                description="Success - FCM token registered",
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Bad Request - Invalid request parameters",
+            ),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Forbidden - Authentication failed",
+            ),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Internal Server Error.",
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="FCMToken Request Example",
+                request_only=True,
+                value={
+                    "fcm_token": "f3X8kPzQ6xE:APA91bHwM1C7eXzR-FCM-TOKEN",
+                },
+            ),
+            OpenApiExample(
+                name="FCMToken Success Example",
+                response_only=True,
+                status_codes=["200"],
+                value={"success": "FCM token registered successfully"},
+            ),
+            OpenApiExample(
+                name="Missing FCM Token",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"fcm_token": ["Token is required."]}},
+            ),
+            OpenApiExample(
+                name="Authentication Failed",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Authentication credentials were not provided."},
+            ),
+            OpenApiExample(
+                name="Internal Server Error",
+                response_only=True,
+                status_codes=["500"],
+                value={"error": "Internal Server Error"},
+            ),
+        ],
+    )
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):
+        try:
+            req_serializer = FCMTokenRequestSerializer(
+                data=request.data, context={"request": request}
+            )
+            req_serializer.is_valid(raise_exception=True)
+            validated_data = req_serializer.validated_data
+
+            fcm_token = validated_data["fcm_token"]
+
+            res_serializer = FCMTokenSerializer(
+                data={"token": fcm_token}, context={"user": request.user}
+            )
+            res_serializer.is_valid(raise_exception=True)
+            res_serializer.save()
+
+            return Response(
+                {"success": "FCM token registered successfully"},
+                status=status.HTTP_200_OK,
+            )
+        except Exception as e:  # pylint: disable=W0718
+            if isinstance(e, ValidationError):
+                raise e
+            logger.error("FCM token registration failed: %s", str(e))
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
