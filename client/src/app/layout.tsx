@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/styles/globals.css";
 import Navbar from "@/components/navbar/navbar";
+import NotificationPrompt from "@/components/notification/NotificationPrompt";
 import { getSessionCookie, getUserRoleFromSession } from "@/libs/cookie";
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default async function RootLayout({
       <body className="relative">
         <Navbar initialSession={session} initialRole={role} />
         <main>{children}</main>
+        <NotificationPrompt isAuthenticated={!!session} />
       </body>
     </html>
   );

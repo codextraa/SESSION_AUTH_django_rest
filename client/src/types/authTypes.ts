@@ -67,6 +67,11 @@ export interface SocialErrorPageProps {
   }>;
 }
 
+export interface FCMTokenErrorFields {
+  fcm_token?: string;
+  general?: string;
+}
+
 //* Request
 
 export interface LoginInput {
@@ -93,6 +98,10 @@ export interface SocialLoginInput {
   provider: SocialProvider;
   social_auth_code: string;
   redirect_uri: string;
+}
+
+export interface FCMTokenInput {
+  fcm_token: string;
 }
 
 //* Response
@@ -128,6 +137,8 @@ export type TwoFASessionAPIResponse = SessionResponseSuccess | ErrorResponse;
 export type SocialLoginAPIResponse = SessionResponseSuccess | ErrorResponse;
 
 export type LogoutAPIResponse = SuccessResponse | ErrorResponse;
+
+export type FCMTokenAPIResponse = SuccessResponse | ErrorResponse;
 
 //* Social Auth Intefaces
 
