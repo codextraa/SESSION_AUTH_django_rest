@@ -7,19 +7,23 @@ import {
   getPreAuthTokenFromSession,
   deletePreAuthCookie,
 } from "@/libs/cookie";
-import { login, twoFALogin, logout } from "@/libs/api";
+import { login, twoFALogin, logout, fcmToken } from "@/libs/api";
 import {
-  PrevStateLoginForm,
   LoginErrorFields,
   TwoFAErrorFields,
+  FCMTokenErrorFields,
+  PrevStateLoginForm,
   PrevStateTwoFALoginForm,
+  FCMTokenInput,
   LogoutAPIResponse,
+  FCMTokenAPIResponse,
 } from "@/types/authTypes";
 import {
   loginInputError,
   twoFAInputError,
   loginServerError,
   twoFAServerError,
+  fcmTokenServerError,
 } from "@/libs/errors";
 
 export async function loginAction(
@@ -167,8 +171,7 @@ export async function twoFALoginAction(
   try {
     const response = await twoFALogin(data);
     if (response && "error" in response && response.error) {
-      const TwoFAErrorResponse: TwoFAErrorFields =
-        await twoFAServerError(response);
+      const TwoFAErrorResponse: TwoFAErrorFields = twoFAServerError(response);
       return {
         success: "",
         error: TwoFAErrorResponse,
@@ -230,6 +233,32 @@ export async function logoutAction(): Promise<LogoutAPIResponse> {
     console.error(error);
     return {
       error: "An error occurred during logout.",
+    };
+  }
+}
+
+export async function fcmTokenAction(
+  data: FCMTokenInput,
+): Promise<FCMTokenAPIResponse> {
+  try {
+    const response = await fcmToken(data);
+
+    if (response && "error" in response && response.error) {
+      const FIDErrorResponse: FCMTokenErrorFields =
+        fcmTokenServerError(response);
+      return {
+        error:
+          FIDErrorResponse.general ||
+          FIDErrorResponse.fcm_token ||
+          "Error registering FCM token.",
+      };
+    }
+
+    return response;
+  } catch (error) {
+    console.error(error);
+    return {
+      error: "An error occurred during FCM token registration.",
     };
   }
 }

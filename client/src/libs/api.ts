@@ -1,16 +1,18 @@
 import { API_URL } from "@/routes";
 import { ApiClient } from "./apiClient";
 import {
-  LoginInput,
-  CSRFTokenResponse,
-  SessionResponse,
   CreateUserData,
   CreateUserAPIResponse,
+  CSRFTokenResponse,
+  SessionResponse,
+  LoginInput,
   TwoFALoginInput,
   SocialLoginInput,
+  FCMTokenInput,
   TwoFASessionAPIResponse,
   SocialLoginAPIResponse,
   LogoutAPIResponse,
+  FCMTokenAPIResponse,
 } from "@/types/authTypes";
 
 const apiClient = new ApiClient(API_URL || "");
@@ -49,4 +51,10 @@ export const socialLogin = async (
 
 export const logout = async (): Promise<LogoutAPIResponse> => {
   return await apiClient.post("/logout/", {});
+};
+
+export const fcmToken = async (
+  data: FCMTokenInput,
+): Promise<FCMTokenAPIResponse> => {
+  return apiClient.post("/fcm-register/", data);
 };
