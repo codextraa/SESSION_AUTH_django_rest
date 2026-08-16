@@ -2,6 +2,7 @@ import {
   LoginErrorFields,
   TwoFAErrorFields,
   SocialLoginErrorFields,
+  FCMTokenErrorFields,
 } from "@/types/authTypes";
 
 const formatErrorMsg = (msg: string): string =>
@@ -103,9 +104,7 @@ export const loginServerError = (response: object): LoginErrorFields => {
   };
 };
 
-export const twoFAServerError = async (
-  response: object,
-): Promise<TwoFAErrorFields> => {
+export const twoFAServerError = (response: object): TwoFAErrorFields => {
   if (
     typeof response === "object" &&
     "error" in response &&
@@ -142,9 +141,9 @@ export const twoFAServerError = async (
   };
 };
 
-export const socialLoginServerError = async (
+export const socialLoginServerError = (
   response: object,
-): Promise<SocialLoginErrorFields> => {
+): SocialLoginErrorFields => {
   if (
     typeof response === "object" &&
     "error" in response &&
@@ -169,6 +168,38 @@ export const socialLoginServerError = async (
       errorMessages.redirect_uri = formatErrorMsg(
         backendErrors.social_auth_token[0],
       );
+    }
+
+    return errorMessages;
+  } else if (
+    typeof response === "object" &&
+    "error" in response &&
+    response.error &&
+    typeof response.error === "string"
+  ) {
+    return {
+      general: response.error,
+    };
+  }
+
+  return {
+    general: "An error occurred during login.",
+  };
+};
+
+export const fcmTokenServerError = (response: object): FCMTokenErrorFields => {
+  if (
+    typeof response === "object" &&
+    "error" in response &&
+    response.error &&
+    typeof response.error === "object"
+  ) {
+    const backendErrors = response.error as Record<string, string[]>;
+
+    const errorMessages: FCMTokenErrorFields = {};
+
+    if (backendErrors.fcm_token?.[0]) {
+      errorMessages.fcm_token = formatErrorMsg(backendErrors.fcm_token[0]);
     }
 
     return errorMessages;
