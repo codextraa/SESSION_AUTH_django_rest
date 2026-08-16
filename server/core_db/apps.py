@@ -7,3 +7,6 @@ class CoreDbConfig(AppConfig):
 
     def ready(self):
         import core_db.signals
+        from server.utils.firebase import initialize_firebase
+
+        initialize_firebase()
