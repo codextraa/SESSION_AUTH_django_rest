@@ -24,14 +24,15 @@ from drf_spectacular.utils import (
 
 from server.renderers import ViewRenderer
 from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
+from server.utils.email import Email
 from server.utils.recaptcha import verify_recaptcha_token
-from server.utils.encryption import generate_cache_key
+from server.utils.encryption import generate_hash_key
 from server.schema_serializers import (
     SuccessResponseSerializer,
     ErrorResponseSerializer,
 )
+from .utils import get_user_role
 from .throttles import OTPCooldownThrottle, TwoFACooldownThrottle
-from .utils import get_user_role, create_otp, verify_otp
 from .serializers import FCMTokenSerializer
 from .validation_serializers import ValidUserSerializer
 from .request_serializers import (
@@ -318,10 +319,6 @@ class LoginView(APIView):
                 response=ErrorResponseSerializer,
                 description="Forbidden - reCAPTCHA validation failed",
             ),
-            status.HTTP_424_FAILED_DEPENDENCY: OpenApiResponse(
-                response=ErrorResponseSerializer,
-                description="Failed Dependency - OTP not sent",
-            ),
             status.HTTP_429_TOO_MANY_REQUESTS: OpenApiResponse(
                 response=ErrorResponseSerializer,
                 description="Too Many Requests",
@@ -494,12 +491,6 @@ class LoginView(APIView):
                 },
             ),
             OpenApiExample(
-                name="OTP Internal Transmit Failure",
-                response_only=True,
-                status_codes=["424"],
-                value={"error": "Something went wrong, could not send OTP. Try again"},
-            ),
-            OpenApiExample(
                 name="Throttled Wait Penalty",
                 response_only=True,
                 status_codes=["429"],
@@ -555,20 +546,22 @@ class LoginView(APIView):
 
             validated_user = valid_serializer.validated_data["user"]
 
-            hashed_user_key = generate_cache_key(validated_user.id)
-            cache.delete(f"login_failures:{hashed_user_key}")
+            hashed_user_key = generate_hash_key(validated_user.id)
+            cache.delete(f"login-failures:{hashed_user_key}")
 
             if validated_user.is_two_fa:
-                otp_success = create_otp(user.id)
-                if not otp_success.get("success"):
-                    return Response(
-                        {
-                            "error": "Something went wrong, could not send OTP. Try again"
-                        },
-                        status=status.HTTP_424_FAILED_DEPENDENCY,
-                    )
+                otp_email = Email(
+                    user,
+                    f"{settings.APP_NAME} account verification code",
+                    "Confirm that it's you",
+                    "We recieved a request to log in to your account. Your verification code is:",
+                )
 
-                otp_res_serializer = OTPResponseSerializer(data=otp_success)
+                pre_auth_token = otp_email.send_otp_email("pre-auth-otp")
+
+                otp_res_serializer = OTPResponseSerializer(
+                    data={"success": True, "pre_auth_token": pre_auth_token}
+                )
 
                 otp_res_serializer.is_valid(raise_exception=True)
 
@@ -706,10 +699,10 @@ class TwoFAView(APIView):
                 value={"error": {"otp": ["OTP is invalid."]}},
             ),
             OpenApiExample(
-                name="Invalid Pre Auth Token",
+                name="Invalid Token",
                 response_only=True,
                 status_codes=["403"],
-                value={"error": "Invalid Pre Auth Token"},
+                value={"error": "Invalid Token"},
             ),
             OpenApiExample(
                 name="Invalid OTP",
@@ -743,17 +736,19 @@ class TwoFAView(APIView):
 
             req_validated_data = req_serializer.validated_data
 
-            otp_validation_success = verify_otp(
-                req_validated_data["pre_auth_token"], req_validated_data["otp"]
+            otp_verification = Email.verification(
+                prefix="pre-auth-otp",
+                token=req_validated_data["pre_auth_token"],
+                user_otp=req_validated_data["otp"],
             )
 
-            if otp_validation_success.get("error"):
+            if otp_verification.get("error"):
                 return Response(
-                    {"error": otp_validation_success["error"]},
+                    {"error": otp_verification["error"]},
                     status=status.HTTP_403_FORBIDDEN,
                 )
 
-            user_id = otp_validation_success["user_id"]
+            user_id = otp_verification["user_id"]
 
             user = get_user_model().objects.get(id=user_id)
 
@@ -785,7 +780,7 @@ class TwoFAView(APIView):
 
             token_res_serializer.is_valid(raise_exception=True)
 
-            hashed_key = generate_cache_key(req_validated_data["pre_auth_token"])
+            hashed_key = generate_hash_key(req_validated_data["pre_auth_token"])
             cache.delete(f"pre_auth:{hashed_key}")
 
             return Response(token_res_serializer.data, status=status.HTTP_200_OK)
@@ -1089,8 +1084,8 @@ class SocialLoginView(APIView):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            hashed_user_key = generate_cache_key(user.id)
-            cache.delete(f"login_failures:{hashed_user_key}")
+            hashed_user_key = generate_hash_key(user.id)
+            cache.delete(f"login-failures:{hashed_user_key}")
 
             login(request, user, backend=user.backend)
             sessionid = request.session.session_key

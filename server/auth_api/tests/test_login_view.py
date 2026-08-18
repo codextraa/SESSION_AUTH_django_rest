@@ -1,11 +1,13 @@
-from django.urls import reverse
-from django.conf import settings
-from django.core.cache import cache
-from django.contrib.auth import get_user_model
-from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
 from unittest.mock import MagicMock, patch
-from server.utils.encryption import generate_cache_key
+
+from django.conf import settings
+from django.contrib.auth import get_user_model
+from django.core.cache import cache
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APIClient, APITestCase
+
+from server.utils.encryption import generate_hash_key
 
 User = get_user_model()
 
@@ -354,25 +356,25 @@ class LoginViewDBTests(APITestCase):
     # SUCCESS TESTS (200)
     # ==========================================
 
-    # @patch("server.views.auth.create_otp")  #! This one will be email mock later
+    @patch("server.utils.email.dispatch_email.delay")
     @patch(
         "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
     )
-    def test_login_with_2fa_enabled_success(self, mock_recaptcha):
+    def test_login_with_2fa_enabled_success(self, mock_recaptcha, mock_dispatch_email):
         """Test that a user with 2FA enabled receives an OTP payload and resets failure cache."""
         mock_recaptcha.return_value.create_assessment.return_value = (
             self.create_mock_recaptcha_response()
         )
 
-        login_hashed_key = generate_cache_key(self.user.id)
-        login_failure_key = f"login_failures:{login_hashed_key}"
+        login_hashed_key = generate_hash_key(self.user.id)
+        login_failure_key = f"login-failures:{login_hashed_key}"
         cache.set(login_failure_key, 2, timeout=settings.LOGIN_FAILURE_ATTEMPT_TTL)
 
-        dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"ghost_failures:{dummy_hash_key}"
+        dummy_hash_key = generate_hash_key("ghost_user")
+        dummy_key = f"ghost-failures:{dummy_hash_key}"
 
-        user_lock_hash = generate_cache_key(self.user.id)
-        user_lock_key = f"otp_cooldown:{user_lock_hash}"
+        user_lock_hash = generate_hash_key(self.user.id)
+        user_lock_key = f"pre-auth-otp-cooldown:{user_lock_hash}"
 
         response = self.client.post(
             self.url, self.valid_payload, format="json", **self.headers
@@ -383,6 +385,14 @@ class LoginViewDBTests(APITestCase):
         self.assertTrue(cache.get(user_lock_key))
         self.assertIsNone(cache.get(login_failure_key))
         self.assertIsNone(cache.get(dummy_key))
+
+        self.assertTrue(mock_dispatch_email.called)
+        self.assertEqual(mock_dispatch_email.call_count, 1)
+        called_args, _ = mock_dispatch_email.call_args
+        email_context = called_args[0]
+        self.assertEqual(email_context["user_email"], self.user.email)
+        self.assertEqual(email_context["username"], self.user.username)
+        self.assertIsNotNone(email_context["otp_code"])
 
     @patch(
         "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
@@ -396,15 +406,15 @@ class LoginViewDBTests(APITestCase):
         self.user.is_two_fa = False
         self.user.save()
 
-        login_hashed_key = generate_cache_key(self.user.id)
-        login_failure_key = f"login_failures:{login_hashed_key}"
+        login_hashed_key = generate_hash_key(self.user.id)
+        login_failure_key = f"login-failures:{login_hashed_key}"
         cache.set(login_failure_key, 3, timeout=settings.LOGIN_FAILURE_ATTEMPT_TTL)
 
-        dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"ghost_failures:{dummy_hash_key}"
+        dummy_hash_key = generate_hash_key("ghost_user")
+        dummy_key = f"ghost-failures:{dummy_hash_key}"
 
-        user_lock_hash = generate_cache_key(self.user.id)
-        user_lock_key = f"otp_cooldown:{user_lock_hash}"
+        user_lock_hash = generate_hash_key(self.user.id)
+        user_lock_key = f"pre-auth-otp-cooldown:{user_lock_hash}"
 
         response = self.client.post(
             self.url, self.valid_payload, format="json", **self.headers
@@ -518,11 +528,11 @@ class LoginViewDBTests(APITestCase):
         payload = self.valid_payload.copy()
         payload["email_or_username"] = "wrongemail@example.com"
 
-        login_hashed_key = generate_cache_key(self.user.id)
-        login_failure_key = f"login_failures:{login_hashed_key}"
+        login_hashed_key = generate_hash_key(self.user.id)
+        login_failure_key = f"login-failures:{login_hashed_key}"
 
-        dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"ghost_failures:{dummy_hash_key}"
+        dummy_hash_key = generate_hash_key("ghost_user")
+        dummy_key = f"ghost-failures:{dummy_hash_key}"
 
         # 3 attempts
         self.client.post(self.url, payload, format="json", **self.headers)
@@ -545,11 +555,11 @@ class LoginViewDBTests(APITestCase):
         payload = self.valid_payload.copy()
         payload["password"] = "WrongPassword111!"
 
-        login_hashed_key = generate_cache_key(self.user.id)
-        login_failure_key = f"login_failures:{login_hashed_key}"
+        login_hashed_key = generate_hash_key(self.user.id)
+        login_failure_key = f"login-failures:{login_hashed_key}"
 
-        dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"ghost_failures:{dummy_hash_key}"
+        dummy_hash_key = generate_hash_key("ghost_user")
+        dummy_key = f"ghost-failures:{dummy_hash_key}"
 
         # Attempt 1: First wrong password entry
         response = self.client.post(self.url, payload, format="json", **self.headers)
@@ -583,11 +593,11 @@ class LoginViewDBTests(APITestCase):
         payload = self.valid_payload.copy()
         payload["password"] = "WrongPassword111!"
 
-        login_hashed_key = generate_cache_key(self.user.id)
-        login_failure_key = f"login_failures:{login_hashed_key}"
+        login_hashed_key = generate_hash_key(self.user.id)
+        login_failure_key = f"login-failures:{login_hashed_key}"
 
-        dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"ghost_failures:{dummy_hash_key}"
+        dummy_hash_key = generate_hash_key("ghost_user")
+        dummy_key = f"ghost-failures:{dummy_hash_key}"
 
         cache.set(login_failure_key, 4, timeout=settings.LOGIN_FAILURE_ATTEMPT_TTL)
 
@@ -610,48 +620,6 @@ class LoginViewDBTests(APITestCase):
         self.assertIsNone(cache.get(dummy_key))
 
     # ==========================================
-    # 2FA OTP WORKFLOW TESTS (424)
-    # ==========================================
-
-    @patch("auth_api.views.create_otp")
-    @patch(
-        "server.utils.recaptcha.recaptchaenterprise_v1.RecaptchaEnterpriseServiceClient"
-    )
-    def test_login_with_2fa_enabled_fails_on_otp_generation_error(
-        self, mock_recaptcha, mock_create_otp
-    ):
-        """Test 424 Failed Dependency when create_otp system returns success False status."""
-        mock_recaptcha.return_value.create_assessment.return_value = (
-            self.create_mock_recaptcha_response()
-        )
-
-        mock_create_otp.return_value = {"success": False, "raw_pre_auth_token": None}
-
-        login_hashed_key = generate_cache_key(self.user.id)
-        login_failure_key = f"login_failures:{login_hashed_key}"
-
-        dummy_hash_key = generate_cache_key("ghost_user")
-        dummy_key = f"ghost_failures:{dummy_hash_key}"
-
-        user_lock_key = generate_cache_key(self.user.id)
-        cache_failure_key = f"otp_cooldown:{user_lock_key}"
-
-        response = self.client.post(
-            self.url, self.valid_payload, format="json", **self.headers
-        )
-
-        self.assertEqual(response.status_code, status.HTTP_424_FAILED_DEPENDENCY)
-
-        error_msg = str(response.data["error"])
-        self.assertEqual(
-            error_msg, "Something went wrong, could not send OTP. Try again"
-        )
-        self.assertNotIn("pre_auth_token", response.data)
-        self.assertIsNone(cache.get(login_failure_key))
-        self.assertIsNone(cache.get(dummy_key))
-        self.assertIsNone(cache.get(cache_failure_key))
-
-    # ==========================================
     # THROTTLING & RATE LIMIT WORKFLOW TESTS (429)
     # ==========================================
 
@@ -664,8 +632,8 @@ class LoginViewDBTests(APITestCase):
             self.create_mock_recaptcha_response()
         )
 
-        user_lock_hash = generate_cache_key(self.user.id)
-        user_lock_key = f"otp_cooldown:{user_lock_hash}"
+        user_lock_hash = generate_hash_key(self.user.id)
+        user_lock_key = f"pre-auth-otp-cooldown:{user_lock_hash}"
         cache.set(user_lock_key, True, timeout=settings.OTP_COOLDOWN_TTL)
 
         with patch("django.core.cache.cache.ttl", return_value=45, create=True):
