@@ -164,6 +164,10 @@ cython_debug/
 # media folder
 media/**
 
+!media/logos/
+
+!media/logos/*
+
 !media/profile_images/
 
 !media/profile_images/default_profile.jpg

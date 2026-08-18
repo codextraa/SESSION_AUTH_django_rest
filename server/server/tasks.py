@@ -3,6 +3,10 @@ from firebase_admin import messaging
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 from django.contrib.auth import get_user_model
+from django.conf import settings
+from django.core.mail import EmailMultiAlternatives
+from django.template.loader import render_to_string
+from django.utils.html import strip_tags
 from core_db.models import FCMToken
 
 logger = logging.getLogger(__name__)
@@ -10,7 +14,7 @@ logger = logging.getLogger(__name__)
 User = get_user_model()
 
 
-@shared_task(bind=True, max_retries=3)
+@shared_task(bind=True, max_retries=3, default_retry_delay=5)
 def dispatch_fcm_notification(self, user_id, title, body, data=None):
     """
     Directly sends FCM push notifications to all active device tokens of a user.
@@ -20,7 +24,9 @@ def dispatch_fcm_notification(self, user_id, title, body, data=None):
         user = User.objects.get(id=user_id)
 
         tokens = list(
-            FCMToken.objects.filter(user=user).values_list("token", flat=True)
+            FCMToken.objects.filter(user=user)
+            .order_by("id")
+            .values_list("token", flat=True)
         )
 
         if not tokens:
@@ -60,11 +66,6 @@ def dispatch_fcm_notification(self, user_id, title, body, data=None):
 
         if tokens_to_delete:
             FCMToken.objects.filter(token__in=tokens_to_delete).delete()
-
-        return {
-            "status": "success",
-            "fcm_delivered_devices": response.success_count,
-        }
     except User.DoesNotExist:
         logger.error("FCM Multicast error for user %s: User not found", user_id)
         return {"status": "failed", "reason": "User not found"}
@@ -76,8 +77,49 @@ def dispatch_fcm_notification(self, user_id, title, body, data=None):
             exc,
         )
         try:
-            raise self.retry(exc=exc, countdown=5)
+            raise self.retry(exc=exc)
         except MaxRetriesExceededError as err:
             logger.error("FCM Multicast error for user %s: %s", user_id, str(err))
+            return {"status": "failed", "reason": str(err)}
 
-    return None
+    return {
+        "status": "success",
+        "fcm_delivered_devices": response.success_count,
+    }
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=5)
+def dispatch_email(self, email_context):
+    """
+    Accepts a plain dictionary containing email context data.
+    Send HTML emails asynchronously.
+    """
+    try:
+        html_content = render_to_string("emails/security_email.html", email_context)
+        text_content = strip_tags(html_content)
+
+        msg = EmailMultiAlternatives(
+            subject=email_context["subject"],
+            body=text_content,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[email_context["user_email"]],
+        )
+
+        msg.attach_alternative(html_content, "text/html")
+        msg.send()
+    except Exception as exc:  # pylint: disable=W0718
+        logger.warning(
+            "Attempt %s/%s failed. Email error: %s. Retrying again",
+            self.request.retries,
+            self.max_retries,
+            exc,
+        )
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError as err:
+            logger.error(
+                "Email error for user %s: %s", email_context["user_email"], str(err)
+            )
+            return {"status": "failed", "reason": str(err)}
+
+    return {"status": "success"}
