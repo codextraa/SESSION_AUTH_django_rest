@@ -85,7 +85,7 @@ ROOT_URLCONF = "server.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -248,6 +248,8 @@ SESSION_COOKIE_TTL = 24 * 60 * 60 + 10  # 1 day and 10 seconds
 CSRF_TOKEN_TTL = 24 * 60 * 60 + 10  # 1 day and 10 seconds
 PRE_AUTH_OTP_TTL = 10 * 60  # 10 minutes
 OTP_COOLDOWN_TTL = 60  # 1 minute
+LINK_EXPIRY_TTL = 10 * 60  # 10 minutes
+LINK_COOLDOWN_TTL = 60  # 1 minute
 DUMMY_COOLDOWN_TTL = 600  # 10 minutes
 INVALID_OTP_COOLDOWN_TTL = 60  # 1 minute
 LOGIN_FAILURE_ATTEMPT_TTL = 60 * 60  # 1 hour
@@ -445,27 +447,26 @@ RECAPTCHA_SITE_KEY_V3 = os.getenv("RECAPTCHA_SITE_KEY_V3")
 
 # * Email Settings
 
-# * Console
+CONTACT_EMAIL = os.getenv("CONTACT_EMAIL")
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-# # * SMTP
-
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# DEFAULT_FROM_EMAIL = os.getenv("EMAIL_HOST_USER")
-# EMAIL_USE_TLS = True
-# EMAIL_HOST = "smtp.gmail.com"
-# EMAIL_PORT = 587
-# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-
-# # * AWS SES
-
-# EMAIL_BACKEND = "django_ses.SESBackend"
-# AWS_SES_REGION_NAME = os.getenv("AWS_REGION_NAME", "ap-south-1")
-# AWS_SES_REGION_ENDPOINT = f"email.{AWS_SES_REGION_NAME}.amazonaws.com"
-# DEFAULT_FROM_EMAIL = "no-reply@codextra.website"
-# SERVER_EMAIL = "no-reply@codextra.website"
+if DJANGO_ENV == "development":
+    # * Console
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    # * SMTP
+    # EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_USE_TLS = True
+    EMAIL_HOST = "smtp.gmail.com"
+    EMAIL_PORT = 587
+    EMAIL_HOST_USER = os.getenv("SMTP_EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = os.getenv("SMTP_EMAIL_HOST_PASSWORD")
+    DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+else:
+    # #* AWS SES
+    EMAIL_BACKEND = "django_ses.SESBackend"
+    AWS_SES_REGION_NAME = AWS_REGION_NAME
+    AWS_SES_REGION_ENDPOINT = f"email.{AWS_SES_REGION_NAME}.amazonaws.com"
+    DEFAULT_FROM_EMAIL = os.getenv("AWS_SES_EMAIL")
+    SERVER_EMAIL = os.getenv("AWS_SES_EMAIL")
 
 # * Twilio Settings
 
@@ -473,6 +474,17 @@ TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 TWILIO_VERIFY_SERVICE_SID = os.getenv("TWILIO_VERIFY_SERVICE_SID")
+
+# * Logo
+
+LOGO = "logos/codextralogo.png"
+
+if MEDIA_URL.startswith("http"):
+    LOGO_URL = f"{MEDIA_URL}{LOGO}"
+else:
+    backend = BACKEND_URL.rstrip("/")
+    media_path = MEDIA_URL.lstrip("/")
+    LOGO_URL = f"{backend}/{media_path}{LOGO}"
 
 # * Monitoring
 
