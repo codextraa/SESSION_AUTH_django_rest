@@ -5,7 +5,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
-from server.utils.encryption import encrypt_and_set_cache_data, generate_cache_key
+from server.utils.encryption import encrypt_data, generate_hash_key
 
 User = get_user_model()
 
@@ -123,17 +123,29 @@ class TwoFAViewDBTests(APITestCase):
             password="SecurePassword123!",
         )
 
+        prefix = "pre-auth-otp"
         self.cache_obj = {
             "user_id": self.user.id,
             "otp": "123456",
         }
 
-        raw_pre_auth_token, error = encrypt_and_set_cache_data(
-            self.cache_obj, "pre_auth", settings.PRE_AUTH_OTP_TTL
+        encrypt_obj = encrypt_data(self.cache_obj)
+
+        cache.set(
+            f"{prefix}:{encrypt_obj["hashed_key"]}",
+            encrypt_obj["encrypted_data"],
+            timeout=settings.PRE_AUTH_OTP_TTL,
+        )
+
+        user_lock_key = generate_hash_key(self.user.id)
+        cache.set(
+            f"{prefix}-cooldown:{user_lock_key}",
+            True,
+            timeout=settings.OTP_COOLDOWN_TTL,
         )
 
         self.valid_payload = {
-            "pre_auth_token": raw_pre_auth_token,
+            "pre_auth_token": str(encrypt_obj["token"]),
             "otp": "123456",
         }
 
@@ -156,19 +168,19 @@ class TwoFAViewDBTests(APITestCase):
     # ==========================================
 
     def test_2fa_login_success(self):
-        """Test that a user with 2FA enabled receives session id after successful otp verification."""
+        """Test that a user with 2FA enabled receives JWT access/refresh tokens after successful otp verification."""
 
         self.user.is_two_fa = False
         self.user.save()
 
-        otp_lock_hash = generate_cache_key(self.user.id)
-        otp_lock_key = f"otp_cooldown:{otp_lock_hash}"
+        otp_lock_hash = generate_hash_key(self.user.id)
+        otp_lock_key = f"pre-auth-otp-cooldown:{otp_lock_hash}"
         cache.set(otp_lock_key, True, timeout=settings.OTP_COOLDOWN_TTL)
 
-        pre_auth_hashed_key = generate_cache_key(self.valid_payload["pre_auth_token"])
+        pre_auth_hashed_key = generate_hash_key(self.valid_payload["pre_auth_token"])
         pre_auth_key = f"pre_auth:{pre_auth_hashed_key}"
 
-        invalid_otp_key = f"invalid_otp:{pre_auth_hashed_key}"
+        invalid_otp_key = f"invalid-otp:{pre_auth_hashed_key}"
         cache.set(invalid_otp_key, 2, timeout=settings.INVALID_OTP_COOLDOWN_TTL)
 
         response = self.client.post(
@@ -210,7 +222,7 @@ class TwoFAViewDBTests(APITestCase):
         )
 
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-        self.assertEqual(response.data["error"], "Invalid Pre Auth Token")
+        self.assertEqual(response.data["error"], "Invalid Token")
 
     def test_login_invalid_otp_increments_cache_counter(self):
         """Test that an incorrect OTP returns 403 and initializes/increments the tracking cache."""
@@ -219,8 +231,8 @@ class TwoFAViewDBTests(APITestCase):
             "otp": 999999,
         }
 
-        hashed_pre_auth_key = generate_cache_key(self.valid_payload["pre_auth_token"])
-        invalid_otp_key = f"invalid_otp:{hashed_pre_auth_key}"
+        hashed_pre_auth_key = generate_hash_key(self.valid_payload["pre_auth_token"])
+        invalid_otp_key = f"invalid-otp:{hashed_pre_auth_key}"
 
         response = self.client.post(
             self.url, invalid_payload, format="json", **self.headers
@@ -245,8 +257,8 @@ class TwoFAViewDBTests(APITestCase):
             "otp": 999999,
         }
 
-        hashed_pre_auth_key = generate_cache_key(self.valid_payload["pre_auth_token"])
-        invalid_otp_key = f"invalid_otp:{hashed_pre_auth_key}"
+        hashed_pre_auth_key = generate_hash_key(self.valid_payload["pre_auth_token"])
+        invalid_otp_key = f"invalid-otp:{hashed_pre_auth_key}"
 
         cache.set(invalid_otp_key, 3, timeout=settings.INVALID_OTP_COOLDOWN_TTL)
 

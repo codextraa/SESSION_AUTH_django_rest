@@ -1,13 +1,15 @@
-from unittest.mock import patch, MagicMock
-from django.test import override_settings
+from unittest.mock import MagicMock, patch
+
 from django.contrib.auth import get_user_model
-from django.urls import reverse
 from django.core.cache import cache
+from django.test import override_settings
+from django.urls import reverse
 from rest_framework import status
-from rest_framework.test import APITestCase, APIClient
+from rest_framework.test import APIClient, APITestCase
 from social_core.exceptions import AuthException
-from server.utils.encryption import generate_cache_key
 from social_django.models import UserSocialAuth
+
+from server.utils.encryption import generate_hash_key
 
 User = get_user_model()
 
@@ -550,8 +552,8 @@ class SocialLoginViewDBTests(APITestCase):
 
         self.assertTrue(User.objects.filter(email="defaultuser@example.com").exists())
 
-        user_hashed_key = generate_cache_key(self.existing_user.id)
-        cache_key = f"login_failures:{user_hashed_key}"
+        user_hashed_key = generate_hash_key(self.existing_user.id)
+        cache_key = f"login-failures:{user_hashed_key}"
         cache.set(cache_key, 3)
 
         response = self.client.post(
@@ -903,8 +905,8 @@ class SocialLoginViewDBTests(APITestCase):
 
         self.assertTrue(User.objects.filter(email="defaultuser@example.com").exists())
 
-        user_hashed_key = generate_cache_key(self.existing_user.id)
-        cache_key = f"login_failures:{user_hashed_key}"
+        user_hashed_key = generate_hash_key(self.existing_user.id)
+        cache_key = f"login-failures:{user_hashed_key}"
         cache.set(cache_key, 3)
 
         response1 = self.client.post(
