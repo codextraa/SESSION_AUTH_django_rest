@@ -140,3 +140,23 @@ class FCMTokenRequestSerializer(serializers.Serializer):  # pylint: disable=W022
             "null": "Token is required.",
         },
     )
+
+
+class ResendOTPRequestSerializer(BaseRecaptchaSerializer):  # pylint: disable=W0223
+    """
+    Handles Resend OTP credentials AND inherits the base reCAPTCHA validations/fields.
+    """
+
+    # pylint: disable=R0801
+    pre_auth_token = serializers.CharField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        help_text="The raw pre-auth token to be used in subsequent requests.",
+        error_messages={
+            "required": "Token is required.",
+            "blank": "Token is required.",
+            "null": "Token is required.",
+        },
+    )
+    # pylint: enable=R0801
