@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from celery.exceptions import MaxRetriesExceededError, Retry
 from firebase_admin import messaging
 from core_db.models import FCMToken
-from server.tasks import dispatch_fcm_notification, dispatch_email
+from server.tasks import dispatch_fcm_notification, dispatch_email, dispatch_twilio_sms
 
 User = get_user_model()
 
@@ -238,5 +238,99 @@ class DispatchEmailRetryTestCase(TestCase):
 
         self.assertEqual(
             result, {"status": "failed", "reason": "SMTP failure limits exceeded"}
+        )
+        self.assertTrue(mock_retry.called)
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+class DispatchTwilioSMSTaskTestCase(TestCase):
+    """Tests for normal task execution using Celery eager execution."""
+
+    def setUp(self):
+        self.phone_no = "+1234567890"
+        self.message = "Hello! This is a test SMS."
+
+    @patch("server.tasks.Client")
+    def test_dispatch_sms_success(self, mock_twilio_client):
+        """Tests that SMS is instantiated and sent via Twilio API correctly."""
+        # Setup mock Twilio client and returned message instance
+        mock_client_instance = MagicMock()
+        mock_sms_instance = MagicMock()
+        mock_sms_instance.sid = "SMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+        mock_client_instance.messages.create.return_value = mock_sms_instance
+        mock_twilio_client.return_value = mock_client_instance
+
+        # Execute task eagerly
+        result = dispatch_twilio_sms.delay(self.phone_no, self.message).get()
+
+        # Assert returned status and SID
+        self.assertEqual(
+            result, {"status": "success", "sid": "SMxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"}
+        )
+
+        # Assert Twilio Client instantiation
+        mock_twilio_client.assert_called_once_with(
+            settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN
+        )
+
+        # Assert message.create API parameters
+        mock_client_instance.messages.create.assert_called_once_with(
+            to=self.phone_no,
+            from_=settings.TWILIO_PHONE_NUMBER,
+            body=self.message,
+        )
+
+
+class DispatchTwilioSMSRetryTestCase(TestCase):
+    """Tests for task retries and failure handling without eager execution interfering."""
+
+    def setUp(self):
+        self.phone_no = "+1234567890"
+        self.message = "Hello! Retry test."
+
+    @patch("server.tasks.Client")
+    @patch("celery.app.task.Task.retry")
+    def test_dispatch_sms_triggers_retry_on_exception(
+        self, mock_retry, mock_twilio_client
+    ):
+        """Tests that a Twilio exception triggers self.retry()."""
+        # Force exception on messages.create
+        mock_client_instance = MagicMock()
+        mock_client_instance.messages.create.side_effect = Exception(
+            "Twilio API Unreachable"
+        )
+        mock_twilio_client.return_value = mock_client_instance
+
+        # Raise Celery's Retry exception when task calls self.retry()
+        mock_retry.side_effect = Retry("Retrying SMS delivery...")
+
+        # Call the task function directly
+        with self.assertRaises(Retry):
+            dispatch_twilio_sms(self.phone_no, self.message)
+
+        self.assertTrue(mock_retry.called)
+
+    @patch("server.tasks.Client")
+    @patch("celery.app.task.Task.retry")
+    def test_dispatch_sms_max_retries_exceeded(self, mock_retry, mock_twilio_client):
+        """Tests that exceeding max retries returns the expected failure dictionary."""
+        # Force exception on messages.create
+        mock_client_instance = MagicMock()
+        mock_client_instance.messages.create.side_effect = Exception(
+            "Persistent Twilio error"
+        )
+        mock_twilio_client.return_value = mock_client_instance
+
+        # Force self.retry to throw MaxRetriesExceededError
+        mock_retry.side_effect = MaxRetriesExceededError(
+            "Twilio failure limits exceeded"
+        )
+
+        # Call task function directly
+        result = dispatch_twilio_sms(self.phone_no, self.message)
+
+        self.assertEqual(
+            result, {"status": "failed", "reason": "Twilio failure limits exceeded"}
         )
         self.assertTrue(mock_retry.called)
