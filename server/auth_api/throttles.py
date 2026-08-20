@@ -3,6 +3,7 @@ from django.core.cache import cache
 from django.db.models import Q
 from django.conf import settings
 from rest_framework.throttling import BaseThrottle
+from server.utils.redis import get_cache_data
 from server.utils.encryption import generate_hash_key
 
 User = get_user_model()
@@ -29,6 +30,7 @@ class OTPCooldownThrottle(BaseThrottle):
         """
         Return `True` if the request should be allowed, `False` otherwise.
         """
+        user_id = None
 
         login_input = (
             request.data.get("email_or_username")
@@ -42,6 +44,7 @@ class OTPCooldownThrottle(BaseThrottle):
                 user = User.objects.only("id").get(
                     Q(email__exact=clean_input.lower()) | Q(username__exact=clean_input)
                 )
+                user_id = user.id
             except User.DoesNotExist:
                 # Dummy key for burning expected CPU cycles to neutralize timing attacks
                 dummy_hash_key = generate_hash_key("ghost_user")
@@ -51,7 +54,22 @@ class OTPCooldownThrottle(BaseThrottle):
 
                 return True  # reCAPTCHA will handle this
 
-            user_lock_key = generate_hash_key(user.id)
+        pre_auth_token = (
+            request.data.get("pre_auth_token")
+            if isinstance(request.data, dict)
+            else None
+        )
+
+        if pre_auth_token:
+            cache_data = get_cache_data("pre-auth-otp", pre_auth_token)
+
+            if cache_data.get("error"):
+                return True  # reCAPTCHA will handle this
+
+            user_id = cache_data["decrypted_data"]["user_id"]
+
+        if user_id:
+            user_lock_key = generate_hash_key(user_id)
             user_cache_key = f"pre-auth-otp-cooldown:{user_lock_key}"
 
             if cache.get(user_cache_key):
