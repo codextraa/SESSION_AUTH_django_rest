@@ -26,6 +26,7 @@ from server.renderers import ViewRenderer
 from server.utils.exception import BadRequestValidationError, ForbiddenValidationError
 from server.utils.email import Email
 from server.utils.recaptcha import verify_recaptcha_token
+from server.utils.redis import get_cache_data
 from server.utils.encryption import generate_hash_key
 from server.schema_serializers import (
     SuccessResponseSerializer,
@@ -41,6 +42,7 @@ from .request_serializers import (
     TwoFARequestSerializer,
     SocialLoginRequestSerializer,
     FCMTokenRequestSerializer,
+    ResendOTPRequestSerializer,
 )
 from .response_serializers import (
     CSRFTokenResponseSerializer,
@@ -781,7 +783,7 @@ class TwoFAView(APIView):
             token_res_serializer.is_valid(raise_exception=True)
 
             hashed_key = generate_hash_key(req_validated_data["pre_auth_token"])
-            cache.delete(f"pre_auth:{hashed_key}")
+            cache.delete(f"pre-auth-otp:{hashed_key}")
 
             return Response(token_res_serializer.data, status=status.HTTP_200_OK)
         except Exception as e:  # pylint: disable=W0718
@@ -1049,6 +1051,7 @@ class SocialLoginView(APIView):
     )
     @method_decorator(csrf_protect)
     def post(self, request, *args, **kwargs):  # pylint: disable=R0914
+        """Post a request to social login. Returns SessionID to the registered email."""
         try:
             req_serializer = SocialLoginRequestSerializer(
                 data=request.data, context={"request": request}
@@ -1269,6 +1272,7 @@ class FCMTokenView(APIView):
     )
     @method_decorator(csrf_protect)
     def post(self, request, *args, **kwargs):
+        """Register a FCM token in the database."""
         try:
             req_serializer = FCMTokenRequestSerializer(
                 data=request.data, context={"request": request}
@@ -1292,6 +1296,218 @@ class FCMTokenView(APIView):
             if isinstance(e, ValidationError):
                 raise e
             logger.error("FCM token registration failed: %s", str(e))
+            return Response(
+                {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class ResendOTPView(APIView):
+    """Resend OTP View."""
+
+    permission_classes = [AllowAny]
+    renderer_classes = [ViewRenderer]
+    throttle_classes = [OTPCooldownThrottle]
+
+    def handle_exception(self, exc):
+        if isinstance(exc, Throttled):
+            return Response(
+                {
+                    "error": (
+                        f"Please wait {exc.wait} seconds before"
+                        " requesting another OTP."
+                    )
+                },
+                status=status.HTTP_429_TOO_MANY_REQUESTS,
+            )
+
+        return super().handle_exception(exc)
+
+    @extend_schema(
+        summary="Resend OTP",
+        description=(
+            "Gives access to a user via pre_auth_token. Handles reCAPTCHA mitigation, "
+            "brute-force account tracking thresholds, and multi-factor conditional logic. "
+            "Issues an new active temporary pre-authentication state payload. "
+            "Deletes any existing active temporary pre-authentication state payload. "
+        ),
+        request=ResendOTPRequestSerializer,
+        tags=["Authentication"],
+        responses={
+            status.HTTP_200_OK: OpenApiResponse(
+                response=OTPResponseSerializer,
+                description="Return Pre-Auth Token",
+            ),
+            status.HTTP_400_BAD_REQUEST: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Bad Request - Invalid request parameters",
+            ),
+            status.HTTP_403_FORBIDDEN: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Forbidden - reCAPTCHA or data validations failed",
+            ),
+            status.HTTP_429_TOO_MANY_REQUESTS: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Too Many Requests",
+            ),
+            status.HTTP_500_INTERNAL_SERVER_ERROR: OpenApiResponse(
+                response=ErrorResponseSerializer,
+                description="Internal Server Error.",
+            ),
+        },
+        examples=[
+            OpenApiExample(
+                name="Resend OTP Request Example",
+                request_only=True,
+                value={
+                    "pre-auth-token": "kdslfjs0f9ujse8fhse8fs-PRE-AUTH-TOKEN",
+                    "recaptcha_token": "03AFcWeA7V_u-R8N_m7N1wXzO3K7L-reCAPTCHA-TOKEN",
+                    "recaptcha_version": "v3",
+                },
+            ),
+            OpenApiExample(
+                name="Resend OTP Success",
+                response_only=True,
+                status_codes=["200"],
+                value={
+                    "success": "True",
+                    "pre_auth_token": "kdslfjs0f9ujse8fhse8fs-PRE-AUTH-TOKEN",
+                },
+            ),
+            OpenApiExample(
+                name="Missing Pre Auth Token",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"pre_auth_token": ["Token is required."]}},
+            ),
+            OpenApiExample(
+                name="Missing reCAPTCHA Token",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"recaptcha_token": ["Missing reCAPTCHA token."]}},
+            ),
+            OpenApiExample(
+                name="Missing reCAPTCHA Version",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"recaptcha_version": ["Missing reCAPTCHA version."]}},
+            ),
+            OpenApiExample(
+                name="Missing User Agent",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"user_agent": ["Missing User Agent Header."]}},
+            ),
+            OpenApiExample(
+                name="Missing User IP Address",
+                response_only=True,
+                status_codes=["400"],
+                value={"error": {"user_ip": ["Missing User IP Address."]}},
+            ),
+            OpenApiExample(
+                name="Invalid reCAPTCHA Token",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Invalid token reason: Invalid"},
+            ),
+            OpenApiExample(
+                name="Action Mismatch",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Action mismatch. Expected 'login', got 'signup'"},
+            ),
+            OpenApiExample(
+                name="Low Score",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "reCAPTCHA validation failed."},
+            ),
+            OpenApiExample(
+                name="Invalid Token",
+                response_only=True,
+                status_codes=["403"],
+                value={"error": "Invalid Token"},
+            ),
+            OpenApiExample(
+                name="Throttled Wait Penalty",
+                response_only=True,
+                status_codes=["429"],
+                value={
+                    "error": "Please wait 45 seconds before requesting another OTP."
+                },
+            ),
+            OpenApiExample(
+                name="Internal Server Error",
+                response_only=True,
+                status_codes=["500"],
+                value={"error": "Internal Server Error"},
+            ),
+        ],
+    )
+    @method_decorator(csrf_protect)
+    def post(self, request, *args, **kwargs):  # pylint: disable=R0914
+        """Resend OTP to the registered email."""
+        try:
+            req_serializer = ResendOTPRequestSerializer(
+                data=request.data, context={"request": request}
+            )
+
+            req_serializer.is_valid(raise_exception=True)
+
+            req_validated_data = req_serializer.validated_data
+
+            is_human, message = verify_recaptcha_token(
+                token=req_validated_data["recaptcha_token"],
+                expected_action="resend-otp",
+                recaptcha_version=req_validated_data["recaptcha_version"],
+                user_ip_address=req_validated_data["user_ip"],
+                user_agent=req_validated_data["user_agent"],
+            )
+
+            if not is_human:
+                return Response(
+                    {"error": message},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            cache_data = get_cache_data(
+                "pre-auth-otp", req_validated_data["pre_auth_token"]
+            )
+
+            if cache_data.get("error"):
+                return Response(
+                    {"error": cache_data["error"]},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+
+            hashed_key = cache_data["hashed_key"]
+            decrypted_data = cache_data["decrypted_data"]
+
+            user = get_user_model().objects.get(id=decrypted_data["user_id"])
+
+            otp_email = Email(
+                user,
+                f"{settings.APP_NAME} account verification code",
+                "Confirm that it's you",
+                "We recieved a request to log in to your account. Your verification code is:",
+            )
+
+            new_pre_auth_token = otp_email.send_otp_email("pre-auth-otp")
+
+            otp_res_serializer = OTPResponseSerializer(
+                data={"success": True, "pre_auth_token": new_pre_auth_token}
+            )
+
+            otp_res_serializer.is_valid(raise_exception=True)
+            cache.delete(f"pre-auth-otp:{hashed_key}")
+
+            return Response(otp_res_serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:  # pylint: disable=W0718
+            if isinstance(
+                e,
+                (ValidationError, BadRequestValidationError, ForbiddenValidationError),
+            ):
+                raise e
+            logger.error("Resend OTP failed: %s", str(e))
             return Response(
                 {"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
