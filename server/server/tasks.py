@@ -1,5 +1,6 @@
 import logging
 from firebase_admin import messaging
+from twilio.rest import Client
 from celery import shared_task
 from celery.exceptions import MaxRetriesExceededError
 from django.contrib.auth import get_user_model
@@ -123,3 +124,30 @@ def dispatch_email(self, email_context):
             return {"status": "failed", "reason": str(err)}
 
     return {"status": "success"}
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=10)
+def dispatch_twilio_sms(self, phone_no, message):
+    """
+    Accepts phone number and message. Send SMS asynchronously.
+    """
+    try:
+        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+        sms = client.messages.create(
+            to=phone_no, from_=settings.TWILIO_PHONE_NUMBER, body=message
+        )
+        logger.info("SMS sent successfully to %s. SID: %s", phone_no, sms.sid)
+    except Exception as exc:  # pylint: disable=W0718
+        logger.warning(
+            "Attempt %s/%s failed. Twilio error: %s. Retrying again",
+            self.request.retries,
+            self.max_retries,
+            exc,
+        )
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError as err:
+            logger.error("Twilio error for phone number %s: %s", phone_no, str(err))
+            return {"status": "failed", "reason": str(err)}
+
+    return {"status": "success", "sid": sms.sid}
