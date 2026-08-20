@@ -3,7 +3,8 @@ import time
 from django.conf import settings
 from django.core.cache import cache
 from server.tasks import dispatch_email
-from .encryption import decrypt_data, encrypt_data, generate_hash_key
+from .redis import get_cache_data, set_cache_data
+from .encryption import generate_hash_key
 
 
 class Email:
@@ -21,33 +22,6 @@ class Email:
         self.app_name = settings.APP_NAME
         self.logo_url = settings.LOGO_URL
         self.contact_email = settings.CONTACT_EMAIL
-
-    def __set_cache_data(self, prefix, raw_cache_obj, object_type=True):
-        """Encrypt and store the cache data in Redis"""
-
-        encrypt_obj = encrypt_data(raw_cache_obj, object_type)
-
-        if prefix == "pre-auth-otp":
-            main_cache_timeout = settings.PRE_AUTH_OTP_TTL
-            cooldown_cache_timeout = settings.OTP_COOLDOWN_TTL
-        else:
-            main_cache_timeout = settings.LINK_EXPIRY_TTL
-            cooldown_cache_timeout = settings.LINK_COOLDOWN_TTL
-
-        cache.set(
-            f"{prefix}:{encrypt_obj["hashed_key"]}",
-            encrypt_obj["encrypted_data"],
-            timeout=main_cache_timeout,
-        )
-
-        user_lock_key = generate_hash_key(self.user.id)
-        cache.set(
-            f"{prefix}-cooldown:{user_lock_key}",
-            True,
-            timeout=cooldown_cache_timeout,
-        )
-
-        return str(encrypt_obj["token"])
 
     @classmethod
     def __verify_otp(cls, user_otp, invalid_otp_key, decrypted_data):
@@ -118,7 +92,7 @@ class Email:
             "otp": otp_code,
         }
 
-        return self.__set_cache_data(prefix, raw_cache_obj)
+        return set_cache_data(prefix, raw_cache_obj, True, self.user.id)
 
     def send_security_link_email(self, prefix):
         """
@@ -130,7 +104,7 @@ class Email:
             "created_at": time.time(),
         }
 
-        token = self.__set_cache_data(prefix, raw_cache_obj)
+        token = set_cache_data(prefix, raw_cache_obj, True, self.user.id)
 
         if prefix == "email-verification":
             action_url = f"{settings.FRONTEND_URL}/auth/verify-email/?{token}"
@@ -157,13 +131,13 @@ class Email:
         Decrypts the minimal cache payload using a custom key.
         Returns user id.
         """
-        hashed_key = generate_hash_key(token)
-        encrypted_data = cache.get(f"{prefix}:{hashed_key}")  # Get the encrypted block
+        cache_data = get_cache_data(prefix, token)
 
-        if not encrypted_data:
-            return {"error": "Invalid Token"}
+        if cache_data.get("error"):
+            return cache_data
 
-        decrypted_data = decrypt_data(encrypted_data)
+        hashed_key = cache_data["hashed_key"]
+        decrypted_data = cache_data["decrypted_data"]
 
         if user_otp:
             invalid_otp_key = f"invalid-otp:{hashed_key}"
