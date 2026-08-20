@@ -4,8 +4,8 @@ from django.core.cache import cache
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
-
-from server.utils.encryption import encrypt_data, generate_hash_key
+from server.utils.redis import set_cache_data
+from server.utils.encryption import generate_hash_key
 
 User = get_user_model()
 
@@ -129,23 +129,10 @@ class TwoFAViewDBTests(APITestCase):
             "otp": "123456",
         }
 
-        encrypt_obj = encrypt_data(self.cache_obj)
-
-        cache.set(
-            f"{prefix}:{encrypt_obj["hashed_key"]}",
-            encrypt_obj["encrypted_data"],
-            timeout=settings.PRE_AUTH_OTP_TTL,
-        )
-
-        user_lock_key = generate_hash_key(self.user.id)
-        cache.set(
-            f"{prefix}-cooldown:{user_lock_key}",
-            True,
-            timeout=settings.OTP_COOLDOWN_TTL,
-        )
+        token = set_cache_data(prefix, self.cache_obj, True, self.user.id)
 
         self.valid_payload = {
-            "pre_auth_token": str(encrypt_obj["token"]),
+            "pre_auth_token": token,
             "otp": "123456",
         }
 
@@ -178,7 +165,7 @@ class TwoFAViewDBTests(APITestCase):
         cache.set(otp_lock_key, True, timeout=settings.OTP_COOLDOWN_TTL)
 
         pre_auth_hashed_key = generate_hash_key(self.valid_payload["pre_auth_token"])
-        pre_auth_key = f"pre_auth:{pre_auth_hashed_key}"
+        pre_auth_key = f"pre-auth-otp:{pre_auth_hashed_key}"
 
         invalid_otp_key = f"invalid-otp:{pre_auth_hashed_key}"
         cache.set(invalid_otp_key, 2, timeout=settings.INVALID_OTP_COOLDOWN_TTL)
