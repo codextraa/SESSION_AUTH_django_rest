@@ -197,7 +197,7 @@ class TwoFAViewDBTests(APITestCase):
     # INVALID TESTS (403)
     # ==========================================
 
-    def test_login_invalid_pre_auth_token_fails(self):
+    def test_2fa_login_invalid_pre_auth_token_fails(self):
         """Test that an invalid/malformed pre-auth token returns 403 Forbidden."""
         invalid_payload = {
             "pre_auth_token": "completely_invalid_or_expired_token",
@@ -211,7 +211,7 @@ class TwoFAViewDBTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
         self.assertEqual(response.data["error"], "Invalid Token")
 
-    def test_login_invalid_otp_increments_cache_counter(self):
+    def test_2fa_login_invalid_otp_increments_cache_counter(self):
         """Test that an incorrect OTP returns 403 and initializes/increments the tracking cache."""
         invalid_payload = {
             "pre_auth_token": self.valid_payload["pre_auth_token"],
