@@ -160,3 +160,23 @@ class ResendOTPRequestSerializer(BaseRecaptchaSerializer):  # pylint: disable=W0
         },
     )
     # pylint: enable=R0801
+
+
+class ReqChangePassRequestSerializer(BaseRecaptchaSerializer):  # pylint: disable=W0223
+    """
+    Request Change Password email or username AND inherits the base reCAPTCHA validations/fields.
+    """
+
+    # pylint: disable=R0801
+    email_or_username = serializers.CharField(
+        required=True,
+        allow_null=False,
+        allow_blank=False,
+        help_text="The email or username of the user to log in.",
+        error_messages={
+            "required": "Email or username is required.",
+            "blank": "Email or username is required.",
+            "null": "Email or username is required.",
+        },
+    )
+    # pylint: enable=R0801
