@@ -109,12 +109,9 @@ class Email:
         if prefix == "email-verification":
             action_url = f"{settings.FRONTEND_URL}/auth/verify-email/?{token}"
             action_button_text = "Verify Email"
-        elif prefix == "create-password":
-            action_url = f"{settings.FRONTEND_URL}/auth/create-password/?{token}"
-            action_button_text = "Create Password"
-        elif prefix == "password-reset":
-            action_url = f"{settings.FRONTEND_URL}/auth/reset-password/?{token}"
-            action_button_text = "Reset Password"
+        elif prefix == "change-password":
+            action_url = f"{settings.FRONTEND_URL}/auth/change-password/?{token}"
+            action_button_text = "Change Password"
         else:
             return "Invalid prefix"
 
