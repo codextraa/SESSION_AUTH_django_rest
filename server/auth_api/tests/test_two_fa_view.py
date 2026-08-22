@@ -129,7 +129,14 @@ class TwoFAViewDBTests(APITestCase):
             "otp": "123456",
         }
 
-        token = set_cache_data(prefix, self.cache_obj, True, self.user.id)
+        token = set_cache_data(
+            prefix,
+            self.cache_obj,
+            True,
+            settings.PRE_AUTH_OTP_TTL,
+            self.user.id,
+            settings.OTP_COOLDOWN_TTL,
+        )
 
         self.valid_payload = {
             "pre_auth_token": token,
