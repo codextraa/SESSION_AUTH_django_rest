@@ -92,7 +92,14 @@ class Email:
             "otp": otp_code,
         }
 
-        return set_cache_data(prefix, raw_cache_obj, True, self.user.id)
+        return set_cache_data(
+            prefix,
+            raw_cache_obj,
+            True,
+            settings.PRE_AUTH_OTP_TTL,
+            self.user.id,
+            settings.OTP_COOLDOWN_TTL,
+        )
 
     def send_security_link_email(self, prefix):
         """
@@ -104,17 +111,21 @@ class Email:
             "created_at": time.time(),
         }
 
-        token = set_cache_data(prefix, raw_cache_obj, True, self.user.id)
+        token = set_cache_data(
+            prefix,
+            raw_cache_obj,
+            True,
+            settings.LINK_EXPIRY_TTL,
+            self.user.id,
+            settings.LINK_COOLDOWN_TTL,
+        )
 
         if prefix == "email-verification":
             action_url = f"{settings.FRONTEND_URL}/auth/verify-email/?{token}"
             action_button_text = "Verify Email"
-        elif prefix == "create-password":
-            action_url = f"{settings.FRONTEND_URL}/auth/create-password/?{token}"
-            action_button_text = "Create Password"
-        elif prefix == "password-reset":
-            action_url = f"{settings.FRONTEND_URL}/auth/reset-password/?{token}"
-            action_button_text = "Reset Password"
+        elif prefix == "change-password":
+            action_url = f"{settings.FRONTEND_URL}/auth/change-password/?{token}"
+            action_button_text = "Change Password"
         else:
             return "Invalid prefix"
 

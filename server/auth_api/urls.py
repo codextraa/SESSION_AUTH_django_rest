@@ -15,4 +15,9 @@ urlpatterns = [
     path("logout/", views.LogoutView.as_view(), name="logout"),
     path("fcm-register/", views.FCMTokenView.as_view(), name="fcm-register"),
     path("resend-otp/", views.ResendOTPView.as_view(), name="resend-otp"),
+    path(
+        "req-change-password/",
+        views.RequestChangePasswordView.as_view(),
+        name="req-change-password",
+    ),
 ]
